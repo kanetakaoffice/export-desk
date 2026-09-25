@@ -945,7 +945,34 @@
     });
   });
 
-  function persistMasterData(){
+  // Union-merge two history arrays by recordId (history entries are never
+  // edited in place, only created or deleted, so "keep whichever copy is
+  // present" is safe). excludeIds lets a delete-in-progress drop an id even
+  // though it may still be sitting in the copy we just fetched from the
+  // cloud, so a deletion isn't silently undone by the merge itself.
+  function mergeHistoryArrays(remoteList, localList, excludeIds){
+    var exclude = {};
+    (excludeIds || []).forEach(function(id){ exclude[id] = true; });
+    var byId = {};
+    (remoteList || []).forEach(function(h){ if(h && h.recordId && !exclude[h.recordId]) byId[h.recordId] = h; });
+    (localList || []).forEach(function(h){ if(h && h.recordId && !exclude[h.recordId]) byId[h.recordId] = h; });
+    var merged = [];
+    for(var k in byId){ merged.push(byId[k]); }
+    merged.sort(function(a, b){ return (b.savedAt || '').localeCompare(a.savedAt || ''); });
+    return merged;
+  }
+
+  function writeToFirebase(){
+    if(!fbRef) return;
+    fbRef.set({settings:settings, products:products, consignees:consignees, history:history}).catch(function(err){
+      // Best-effort only — localStorage above already has the data.
+      if(window.console) console.warn('firebase save failed', err);
+    });
+  }
+
+  // deletedHistoryIds: recordIds being removed by THIS call, so they stay
+  // removed even if another device's copy (fetched just below) still has them.
+  function persistMasterData(deletedHistoryIds){
     saveLS(LS_SETTINGS, settings);
     saveLS(LS_PRODUCTS, products);
     saveLS(LS_CONSIGNEES, consignees);
@@ -961,9 +988,18 @@
       });
     }
     if(fbRef){
-      fbRef.set({settings:settings, products:products, consignees:consignees, history:history}).catch(function(err){
-        // Best-effort only — localStorage above already has the data.
-        if(window.console) console.warn('firebase save failed', err);
+      // A save from one tab/device must never blow away history entries added
+      // from another tab/device since this page was opened — so pull the
+      // latest cloud copy of history and merge it in immediately before
+      // writing, instead of overwriting the cloud copy with whatever this
+      // page happens to be holding in memory.
+      fbRef.child('history').once('value').then(function(snap){
+        history = mergeHistoryArrays(snap.val(), history, deletedHistoryIds);
+        saveLS(LS_HISTORY, history);
+        writeToFirebase();
+      }).catch(function(err){
+        if(window.console) console.warn('firebase history fetch before save failed', err);
+        writeToFirebase();
       });
     }
     checkBackupReminder();
@@ -1942,7 +1978,7 @@
     } else if(e.target.closest('[data-del-hist]')){
       showConfirm('この履歴を削除しますか？', function(){
         history = history.filter(function(h){return h.recordId!==rec.recordId;});
-        persistMasterData();
+        persistMasterData([rec.recordId]);
         renderHistoryList();
       });
     }

@@ -1,0 +1,2073 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>KANETAKA Export Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.13.0/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.13.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.13.0/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --bg:#f4f1e9;
+    --surface:#ffffff;
+    --surface-alt:#fbf8f2;
+    --ink:#1c2130;
+    --ink-muted:#666b78;
+    --ink-faint:#9a9d8f;
+    --border:#ddd5c2;
+    --border-strong:#c9bfa4;
+    --primary:#1f3a5f;
+    --primary-strong:#16283f;
+    --primary-ink:#ffffff;
+    --accent:#b1712f;
+    --accent-strong:#8f5a22;
+    --accent-ink:#ffffff;
+    --success:#2f7a4f;
+    --success-bg:#e6f2ea;
+    --danger:#b3453a;
+    --danger-bg:#fbeae8;
+    --focus:#b1712f;
+    --shadow:0 1px 2px rgba(28,33,48,.06),0 8px 24px -12px rgba(28,33,48,.18);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#11141c;
+      --surface:#1a1e29;
+      --surface-alt:#20242f;
+      --ink:#e9e7df;
+      --ink-muted:#9aa0ae;
+      --ink-faint:#6b7080;
+      --border:#333a4a;
+      --border-strong:#454d61;
+      --primary:#8fb0d9;
+      --primary-strong:#aecbee;
+      --primary-ink:#0c1622;
+      --accent:#dc9c5c;
+      --accent-strong:#f0b57c;
+      --accent-ink:#241606;
+      --success:#69c48c;
+      --success-bg:#173226;
+      --danger:#e58579;
+      --danger-bg:#3a1e1c;
+      --focus:#dc9c5c;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11141c;
+    --surface:#1a1e29;
+    --surface-alt:#20242f;
+    --ink:#e9e7df;
+    --ink-muted:#9aa0ae;
+    --ink-faint:#6b7080;
+    --border:#333a4a;
+    --border-strong:#454d61;
+    --primary:#8fb0d9;
+    --primary-strong:#aecbee;
+    --primary-ink:#0c1622;
+    --accent:#dc9c5c;
+    --accent-strong:#f0b57c;
+    --accent-ink:#241606;
+    --success:#69c48c;
+    --success-bg:#173226;
+    --danger:#e58579;
+    --danger-bg:#3a1e1c;
+    --focus:#dc9c5c;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+
+  *,*::before,*::after{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans','Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic Medium',Meiryo,sans-serif;
+    font-size:14px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;}
+  a{color:inherit;}
+  button{font-family:inherit;}
+  ::selection{background:var(--accent);color:var(--accent-ink);}
+
+  /* ---------- App shell ---------- */
+  .app{display:flex;flex-direction:column;min-height:100vh;}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:14px 22px;background:var(--surface);border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:40;
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;}
+  .brand-mark{
+    width:38px;height:38px;border-radius:9px;background:var(--primary);color:var(--primary-ink);
+    display:flex;align-items:center;justify-content:center;font-size:19px;flex:none;
+  }
+  .brand-text{min-width:0;}
+  .brand-name{font-weight:700;font-size:16px;letter-spacing:.01em;white-space:nowrap;}
+  .brand-sub{font-size:11.5px;color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .topbar-actions{display:flex;gap:8px;flex:none;}
+
+  .backup-banner{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:10px 22px;background:var(--accent);color:var(--accent-ink);
+    font-size:12.5px;line-height:1.5;
+  }
+  .backup-banner.hidden{display:none;}
+  .backup-banner strong{font-weight:700;}
+  .backup-banner-msg{flex:1 1 320px;min-width:200px;}
+  .backup-banner-actions{display:flex;gap:8px;flex:none;align-items:center;}
+  .backup-banner .btn{
+    border-color:rgba(0,0,0,.18);background:rgba(255,255,255,.22);color:var(--accent-ink);
+  }
+  .backup-banner .btn:hover{background:rgba(255,255,255,.34);}
+  .backup-banner .btn-text{
+    appearance:none;border:none;background:none;color:var(--accent-ink);
+    font-size:12.5px;font-weight:600;text-decoration:underline;cursor:pointer;padding:4px 2px;
+  }
+
+  .store-status{
+    display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-muted);
+    padding:9px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface-alt);
+    margin:-4px 0 14px;
+  }
+  .store-status .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ink-faint);}
+  .store-status.is-active .dot{background:var(--success);}
+  .store-status.is-inactive .dot{background:var(--danger);}
+  .store-status b{color:var(--ink);font-weight:700;}
+
+  .btn{
+    appearance:none;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);
+    padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;white-space:nowrap;line-height:1.2;
+    transition:filter .12s ease, transform .05s ease;
+  }
+  .btn:hover{filter:brightness(0.97);}
+  :root[data-theme="dark"] .btn:hover, @media (prefers-color-scheme:dark){.btn:hover{filter:brightness(1.12);}}
+  .btn:active{transform:translateY(1px);}
+  .btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--ink-muted);}
+  .btn-ghost:hover{background:var(--surface-alt);color:var(--ink);}
+  .btn-primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink);}
+  .btn-accent{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .btn-danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+  .btn-danger:hover{background:var(--danger-bg);}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px;}
+  .btn-icon{padding:6px 9px;}
+  .btn[disabled]{opacity:.45;cursor:not-allowed;}
+
+  .workspace{
+    flex:1;display:grid;grid-template-columns:minmax(380px,460px) 1fr;gap:0;align-items:start;
+    max-width:1720px;margin:0 auto;width:100%;
+  }
+  @media (max-width:860px){
+    .workspace{grid-template-columns:1fr;}
+    .preview-panel{position:static !important;height:auto !important;}
+  }
+
+  .form-panel{
+    padding:20px 20px 80px;overflow-y:auto;
+    max-height:calc(100vh - 66px);
+    border-right:1px solid var(--border);
+    display:flex;flex-direction:column;gap:16px;
+  }
+  @media (max-width:860px){.form-panel{max-height:none;border-right:none;border-bottom:1px solid var(--border);}}
+
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:16px 18px;box-shadow:var(--shadow);
+  }
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+  .card-title{font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--ink);display:flex;align-items:center;gap:8px;}
+  .card-title .num{
+    width:20px;height:20px;border-radius:5px;background:var(--surface-alt);color:var(--ink-muted);
+    font-size:11px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;
+    border:1px solid var(--border);
+  }
+  .card-note{font-size:11.5px;color:var(--ink-faint);}
+
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;}
+  .field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .field.full{grid-column:1 / -1;}
+  .field label{font-size:11.5px;color:var(--ink-muted);font-weight:600;letter-spacing:.01em;}
+  .field .hint{font-size:10.5px;color:var(--ink-faint);}
+
+  input[type="text"],input[type="number"],input[type="date"],input[type="tel"],select,textarea{
+    width:100%;padding:8px 9px;border:1px solid var(--border-strong);border-radius:7px;
+    background:var(--surface);color:var(--ink);font-size:13px;font-family:inherit;
+  }
+  input.mono,select.mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+  textarea{resize:vertical;min-height:56px;line-height:1.45;}
+  input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:1px;border-color:var(--focus);}
+  input::placeholder,textarea::placeholder{color:var(--ink-faint);}
+
+  .row-inline{display:flex;gap:8px;align-items:center;}
+  .grow{flex:1;min-width:0;}
+
+  details.adv{border-top:1px dashed var(--border);margin-top:10px;padding-top:10px;}
+  details.adv summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-muted);list-style:none;}
+  details.adv summary::-webkit-details-marker{display:none;}
+  details.adv summary::before{content:"▸ ";color:var(--accent);}
+  details.adv[open] summary::before{content:"▾ ";}
+  details.adv .field-grid{margin-top:10px;}
+
+  .picker-row{display:flex;gap:8px;margin-bottom:10px;}
+  .picker-row select{flex:1;}
+  .combo{position:relative;flex:1;min-width:0;}
+  .combo-trigger{
+    width:100%;text-align:left;padding:8px 30px 8px 9px;border:1px solid var(--border-strong);border-radius:7px;
+    background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 11px center;
+    color:var(--ink);font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .combo-trigger.placeholder{color:var(--ink-faint);}
+  .combo-trigger:hover{background-color:var(--surface-alt);}
+  .combo-trigger:focus-visible{outline:2px solid var(--focus);outline-offset:1px;}
+  .combo-panel{
+    position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:230px;overflow-y:auto;
+    background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow);
+    z-index:30;display:none;
+  }
+  .combo-panel.open{display:block;}
+  .combo-search-wrap{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--border-strong);padding:6px;z-index:1;}
+  .combo-search{width:100%;padding:7px 9px;border:1px solid var(--border-strong);border-radius:6px;font-size:12.5px;font-family:inherit;color:var(--ink);background:var(--surface);}
+  .combo-search:focus-visible{outline:2px solid var(--focus);outline-offset:1px;}
+  .combo-option{padding:8px 10px;font-size:12.5px;cursor:pointer;border-bottom:1px solid var(--border);}
+  .combo-option:last-child{border-bottom:none;}
+  .combo-option:hover{background:var(--surface-alt);}
+  .combo-empty{padding:10px;font-size:12px;color:var(--ink-faint);}
+
+  /* item table */
+  .items-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:9px;}
+  table.items{width:100%;border-collapse:collapse;min-width:640px;}
+  table.items th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);
+    background:var(--surface-alt);padding:8px 8px;border-bottom:1px solid var(--border);white-space:nowrap;
+  }
+  table.items td{padding:6px 6px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  table.items tr:last-child td{border-bottom:none;}
+  table.items input,table.items select{padding:6px 7px;font-size:12.5px;}
+  .col-carton{width:56px;}
+  .col-origin{width:96px;}
+  .col-weight{width:78px;}
+  .col-qty{width:64px;}
+  .col-price{width:98px;}
+  .col-amount{width:104px;}
+  .col-op{width:34px;}
+  .col-op2{width:34px;}
+  .col-op3{width:34px;}
+  .row-save{
+    width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--surface);
+    color:var(--accent);cursor:pointer;font-size:12px;line-height:1;
+  }
+  .row-save:hover{background:var(--surface-alt);}
+  .row-dup{
+    width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--surface);
+    color:var(--ink-muted);cursor:pointer;font-size:13px;line-height:1;
+  }
+  .row-dup:hover{background:var(--surface-alt);}
+  .amount-cell{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:12.5px;text-align:right;padding-right:8px !important;white-space:nowrap;}
+  .row-del{
+    width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--surface);
+    color:var(--danger);cursor:pointer;font-size:13px;line-height:1;
+  }
+  .row-del:hover{background:var(--danger-bg);}
+  .items-toolbar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+
+  .summary-strip{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;
+  }
+  .summary-tile{
+    background:var(--surface-alt);border:1px solid var(--border);border-radius:9px;padding:8px 10px;
+  }
+  .summary-tile .lbl{font-size:10px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.03em;}
+  .summary-tile .val{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums;}
+
+  .carton-block{display:flex;flex-direction:column;gap:10px;}
+  .carton-stepper{display:flex;align-items:center;gap:10px;}
+  .stepper-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);font-size:16px;cursor:pointer;font-weight:700;}
+  .stepper-btn:hover{background:var(--surface-alt);}
+  .carton-count-val{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;min-width:22px;text-align:center;}
+  .carton-dims-list{display:flex;flex-direction:column;gap:8px;}
+  .carton-dim-row{display:grid;grid-template-columns:70px 1fr 1fr 1fr 1fr;gap:8px;align-items:center;}
+  .carton-dim-row .tag{font-size:12px;font-weight:700;color:var(--ink-muted);}
+  .gross-total-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface-alt);border:1px solid var(--border);border-radius:9px;padding:8px 10px;margin-top:4px;}
+  .gross-total-row .lbl{font-size:12px;color:var(--ink-muted);font-weight:600;}
+  .gross-total-row .val{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;}
+
+  /* ---------- Preview panel ---------- */
+  .preview-panel{
+    position:sticky;top:66px;height:calc(100vh - 66px);display:flex;flex-direction:column;
+    background:var(--bg);
+  }
+  .preview-tabs{display:flex;gap:4px;padding:14px 18px 0;}
+  .ptab{
+    padding:9px 16px;border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;
+    background:var(--surface-alt);color:var(--ink-muted);font-weight:700;font-size:12.5px;cursor:pointer;
+  }
+  .ptab.active{background:var(--surface);color:var(--ink);}
+  .preview-actions{
+    display:flex;gap:8px;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border);
+    flex-wrap:wrap;align-items:center;
+  }
+  .preview-actions .spacer{flex:1;}
+  .print-both-label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-muted);cursor:pointer;user-select:none;}
+  .print-both-label input{cursor:pointer;}
+  .print-fallback-hint{font-size:11px;color:var(--ink-faint);}
+  .save-flash{font-size:12px;color:var(--success);font-weight:600;opacity:0;transition:opacity .2s;}
+  .save-flash.show{opacity:1;}
+
+  .preview-scroll{flex:1;overflow:auto;padding:26px;display:flex;justify-content:center;background:
+    repeating-linear-gradient(135deg,var(--bg) 0 2px, var(--surface-alt) 0 3px) fixed;
+    background-size:auto;
+  }
+  #printArea{width:100%;max-width:800px;}
+  /* the document preview always renders as a fixed white paper page, independent of the
+     app theme, since it represents an actual printed sheet — like a doc-preview pane */
+  .doc{display:none;background:#ffffff;color:#1a1a1a;padding:26px 30px;border:1px solid var(--border-strong);
+    border-radius:2px;box-shadow:var(--shadow);font-size:12px;line-height:1.5;}
+  .doc.tab-active{display:block;}
+  .doc-title{text-align:center;font-size:18px;font-weight:700;letter-spacing:.04em;border:1px solid #1a1a1a;padding:6px;margin-bottom:6px;}
+  .doc-metarow{display:flex;justify-content:flex-end;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;margin-bottom:10px;}
+  .doc-metarow .metalabel{color:#555;}
+  .doc-head{display:grid;grid-template-columns:1fr 1fr;border:1px solid #1a1a1a;margin-bottom:10px;}
+  .doc-head > div{padding:8px 10px;}
+  .doc-head .left{border-right:1px solid #1a1a1a;}
+  .doc-block-title{font-weight:700;font-style:italic;font-size:11.5px;border-bottom:1px solid #999;padding-bottom:3px;margin-bottom:4px;}
+  .doc-addr{white-space:pre-line;font-size:11.5px;}
+  .doc-kv{display:flex;gap:6px;font-size:11.5px;margin-top:5px;}
+  .doc-kv .k{font-weight:700;font-style:italic;min-width:88px;}
+  .doc-kv .v{font-family:'IBM Plex Mono',monospace;}
+
+  table.doc-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:0;}
+  table.doc-table th{border:1px solid #1a1a1a;background:#eef0f2;font-weight:700;font-style:italic;padding:5px 6px;font-size:10.5px;}
+  table.doc-table td{border:1px solid #1a1a1a;padding:5px 6px;vertical-align:top;}
+  table.doc-table td.num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  table.doc-table tr.carton-sep td{background:#f3f1ea;font-weight:700;text-align:center;font-style:italic;}
+  table.doc-table tr.total-row td{font-weight:700;background:#f6f6f2;}
+
+  .doc-foot{display:grid;grid-template-columns:1.15fr 1fr;border:1px solid #1a1a1a;border-top:none;margin-bottom:14px;}
+  .doc-foot > div{padding:9px 10px;}
+  .doc-foot .left{border-right:1px solid #1a1a1a;}
+  .doc-foot .bank-title{font-weight:700;font-style:italic;text-decoration:underline;font-size:11px;margin-bottom:4px;}
+  .doc-foot .bank-line{font-size:10.8px;}
+  .doc-foot .note{font-size:10px;color:#333;margin-top:6px;}
+  .doc-foot .kv2{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:1px dotted #bbb;}
+  .doc-foot .kv2 .k{font-weight:700;font-style:italic;}
+  .doc-foot .kv2 .v{font-family:'IBM Plex Mono',monospace;font-weight:700;}
+  .doc-foot .dims-line{font-size:11px;display:flex;justify-content:space-between;padding:2px 0;}
+  .doc-sign{margin-top:14px;font-size:11px;}
+  .doc-sign .line{border-bottom:1px solid #1a1a1a;width:220px;margin-top:26px;margin-left:auto;}
+  .doc-thanks{margin-top:16px;font-size:11px;font-style:italic;color:#333;text-align:center;}
+
+  /* ---------- Modals ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(10,12,18,.5);display:none;align-items:flex-start;justify-content:center;
+    padding:5vh 16px;z-index:100;overflow-y:auto;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--surface);border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow);
+    width:100%;max-width:640px;padding:20px 22px 22px;
+  }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .modal-head h2{margin:0;font-size:16px;}
+  .count-badge{font-size:12.5px;font-weight:600;color:var(--ink-muted);margin-left:4px;}
+  .modal-close{border:none;background:transparent;font-size:20px;cursor:pointer;color:var(--ink-muted);line-height:1;padding:4px;}
+  .modal-close:hover{color:var(--ink);}
+  .modal-section{margin-bottom:16px;}
+  .modal-section h3{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-muted);margin:0 0 8px;}
+  .mini-list{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;padding-right:4px;}
+  .mini-row{display:grid;gap:6px;align-items:center;background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:8px;}
+  .mini-row.product{grid-template-columns:1.4fr 1fr .8fr .7fr .8fr 30px;}
+  .mini-row.consignee{grid-template-columns:1fr 1.3fr .9fr 30px;}
+  .mini-row.history{grid-template-columns:1fr 1fr auto;align-items:center;}
+  .mini-row input,.mini-row textarea{font-size:12px;padding:6px 7px;}
+  .hist-info{font-size:12px;line-height:1.4;}
+  .hist-info b{font-family:'IBM Plex Mono',monospace;}
+  .hist-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;}
+  .empty-note{font-size:12px;color:var(--ink-faint);padding:10px 2px;}
+  textarea.backup-box{font-family:'IBM Plex Mono',monospace;font-size:10.5px;min-height:100px;}
+  .modal-section .hint{font-size:12px;color:var(--ink-muted);margin:0 0 8px;}
+  .backup-file-link{font-size:11.5px;color:var(--ink-muted);text-decoration:underline;}
+  .modal-section details{font-size:12px;}
+  .modal-section details summary{cursor:pointer;color:var(--ink-muted);margin-top:4px;}
+  .modal-section details .backup-box{margin-top:8px;}
+  #backupFileInput{font-size:12px;}
+
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+    padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:600;z-index:200;opacity:0;pointer-events:none;
+    transition:opacity .2s, transform .2s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  @media (prefers-reduced-motion: reduce){*{transition:none !important;}}
+
+  @media print{
+    /* Most browsers strip background colors/shading when printing unless the person
+       checks "Background graphics" in the print dialog. Force it on so the table header
+       shading, carton-separator rows, etc. print the same as they look on screen. */
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important;}
+    body{background:#fff !important;}
+    .topbar,.backup-banner,.form-panel,.preview-tabs,.preview-actions,.modal-overlay,.toast{display:none !important;}
+    .workspace{display:block !important;max-width:none;}
+    .preview-panel{position:static !important;height:auto !important;background:#fff !important;}
+    .preview-scroll{overflow:visible !important;padding:0 !important;background:#fff !important;display:block !important;}
+    .app,.workspace{background:#fff !important;}
+    #printArea{max-width:none !important;}
+    /* By default, print only the document whose tab is currently selected on screen —
+       this way the OS/browser print command (Ctrl+P / Cmd+P) does the right thing even
+       when a script-triggered print (window.print()) is blocked by the page's sandbox. */
+    .doc{display:none !important;box-shadow:none !important;border:1px solid #000 !important;page-break-after:always;margin:0 auto;}
+    .doc.tab-active{display:block !important;}
+    body.print-both-mode .doc{display:block !important;}
+    .doc:last-of-type{page-break-after:auto;}
+    @page{size:A4;margin:12mm;}
+  }
+</style></head><body>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">📦</div>
+      <div class="brand-text">
+        <div class="brand-name">KANETAKA Export Desk</div>
+        <div class="brand-sub">Kanetaka Co., Ltd. — Invoice &amp; Packing List</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" id="btnBackup">バックアップ</button>
+      <button class="btn btn-ghost" id="btnHistory">履歴</button>
+      <button class="btn btn-ghost" id="btnSettings">設定</button>
+      <button class="btn btn-primary" id="btnNew">＋ 新規作成</button>
+    </div>
+  </header>
+
+  <div class="backup-banner hidden" id="backupBanner">
+    <div class="backup-banner-msg">
+      <strong>⚠ しばらくバックアップが取られていません。</strong>
+      登録した商品・取引先・履歴はこのブラウザに保存されていますが、万一に備えて定期的なバックアップをお勧めします。
+    </div>
+    <div class="backup-banner-actions">
+      <button class="btn btn-sm" id="btnBannerBackupNow">今すぐバックアップ</button>
+      <button class="btn-text" id="btnBannerDismiss">後で</button>
+    </div>
+  </div>
+
+  <main class="workspace">
+    <section class="form-panel" id="formPanel">
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span class="num">1</span>出荷情報</div>
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="f-date">日付</label>
+            <input type="date" id="f-date">
+          </div>
+          <div class="field">
+            <label for="f-invno">インボイス番号</label>
+            <div class="row-inline">
+              <input type="text" id="f-invno" class="mono grow">
+              <button class="btn btn-ghost btn-sm btn-icon" id="btnRenumber" title="日付から自動採番">↻</button>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="f-payterms">Payment Terms</label>
+            <input type="text" id="f-payterms" placeholder="例: Freight Collect">
+          </div>
+        </div>
+        <details class="adv">
+          <summary>その他の項目（Aircraft / On or About / From / To / Trade Terms）</summary>
+          <div class="field-grid">
+            <div class="field"><label for="f-aircraft">by Aircraft</label><input type="text" id="f-aircraft"></div>
+            <div class="field"><label for="f-onabout">On or About</label><input type="text" id="f-onabout" placeholder="例: Aug.25.2026"></div>
+            <div class="field"><label for="f-from">From</label><input type="text" id="f-from"></div>
+            <div class="field"><label for="f-to">To</label><input type="text" id="f-to"></div>
+            <div class="field full"><label for="f-tradeterms">Trade Terms</label><input type="text" id="f-tradeterms" placeholder="例: FOB Nagoya"></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span class="num">2</span>荷送人 (Shipper)</div>
+          <button class="btn btn-ghost btn-sm" id="btnShipperReset">初期値に戻す</button>
+        </div>
+        <div class="field-grid">
+          <div class="field full"><label for="f-shipname">会社名</label><input type="text" id="f-shipname"></div>
+          <div class="field full"><label for="f-shipaddr">住所（改行で複数行）</label><textarea id="f-shipaddr"></textarea></div>
+          <div class="field full"><label for="f-shiptel">TEL</label><input type="text" id="f-shiptel"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span class="num">3</span>荷受人 (Consignee)</div>
+        </div>
+        <div class="picker-row">
+          <select id="f-consignee-pick">
+            <option value="">— 保存済みの取引先から選択 —</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" id="btnConsigneeManage">管理</button>
+        </div>
+        <div class="field-grid">
+          <div class="field full"><label for="f-consname">会社名</label><input type="text" id="f-consname"></div>
+          <div class="field full"><label for="f-consaddr">住所（改行で複数行）</label><textarea id="f-consaddr"></textarea></div>
+          <div class="field full"><label for="f-constel">TEL</label><input type="text" id="f-constel"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btnSaveConsignee" style="margin-top:8px;">＋ この宛先を取引先として保存</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span class="num">4</span>商品明細</div>
+          <button class="btn btn-ghost btn-sm" id="btnProductManage">商品マスタを管理</button>
+        </div>
+        <div class="picker-row">
+          <div class="combo" id="productCombo">
+            <button type="button" class="combo-trigger placeholder" id="productComboTrigger">— よく使う商品から追加 —</button>
+            <div class="combo-panel" id="productComboPanel"></div>
+          </div>
+          <button class="btn btn-accent btn-sm" id="btnAddFromMaster">追加</button>
+        </div>
+        <div class="items-scroll">
+          <table class="items">
+            <thead>
+              <tr>
+                <th class="col-carton">箱</th>
+                <th>品名</th>
+                <th>型番/コード</th>
+                <th class="col-origin">原産国</th>
+                <th class="col-weight">正味重量</th>
+                <th class="col-qty">数量</th>
+                <th class="col-price">単価</th>
+                <th class="col-amount">金額</th>
+                <th class="col-op3"></th>
+                <th class="col-op2"></th>
+                <th class="col-op"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
+        <div class="items-toolbar">
+          <button class="btn btn-ghost btn-sm" id="btnAddBlankItem">＋ 自由入力で行を追加</button>
+          <button class="btn btn-ghost btn-sm" id="btnDuplicateToNewCarton">＋ 同じ商品で新しいカートンを追加</button>
+        </div>
+        <div class="summary-strip">
+          <div class="summary-tile"><div class="lbl">数量合計</div><div class="val" id="sumQty">0</div></div>
+          <div class="summary-tile"><div class="lbl">正味重量合計 (kg)</div><div class="val" id="sumWeight">0</div></div>
+          <div class="summary-tile"><div class="lbl">金額合計</div><div class="val" id="sumAmount">0</div></div>
+          <div class="summary-tile"><div class="lbl">カートン数</div><div class="val" id="sumCartons">1</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="num">5</span>カートン情報</div></div>
+        <div class="carton-block">
+          <div class="carton-stepper">
+            <span class="field-note" style="font-size:12px;color:var(--ink-muted);font-weight:600;">カートン数</span>
+            <button class="stepper-btn" id="btnCartonMinus">−</button>
+            <span class="carton-count-val" id="cartonCountVal">1</span>
+            <button class="stepper-btn" id="btnCartonPlus">＋</button>
+            <span class="card-note">商品明細の「箱」列で各商品の割り当てを選択します</span>
+          </div>
+          <div class="carton-dims-list" id="cartonDimsList"></div>
+          <div class="gross-total-row">
+            <span class="lbl">グロス重量合計 (kg) — カートンごとの入力から自動計算</span>
+            <span class="val" id="sumGrossWeight">0</span>
+          </div>
+        </div>
+      </div>
+
+      <details class="adv" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow);">
+        <summary style="font-size:13px;font-weight:700;color:var(--ink);">銀行口座情報 (Remittance Information)</summary>
+        <div class="field-grid" style="margin-top:10px;">
+          <div class="field full"><label for="f-bankname">Bank Name</label><input type="text" id="f-bankname"></div>
+          <div class="field"><label for="f-bankbranch">Branch</label><input type="text" id="f-bankbranch"></div>
+          <div class="field"><label for="f-bankswift">SWIFT Code</label><input type="text" id="f-bankswift" class="mono"></div>
+          <div class="field"><label for="f-banktype">Account Type</label><input type="text" id="f-banktype"></div>
+          <div class="field"><label for="f-bankno">Account Number</label><input type="text" id="f-bankno" class="mono"></div>
+          <div class="field full"><label for="f-bankacctname">Account Name</label><input type="text" id="f-bankacctname"></div>
+          <div class="field full"><label for="f-banknote">Note</label><textarea id="f-banknote"></textarea></div>
+        </div>
+      </details>
+
+    </section>
+
+    <section class="preview-panel">
+      <div class="preview-tabs">
+        <button class="ptab active" data-doc="invoice">インボイス</button>
+        <button class="ptab" data-doc="packing">パッキングリスト</button>
+      </div>
+      <div class="preview-actions">
+        <button class="btn btn-primary btn-sm" id="btnPrintCurrent">印刷 / PDF保存</button>
+        <label class="print-both-label">
+          <input type="checkbox" id="chkPrintBoth"> 両方まとめて印刷
+        </label>
+        <span class="print-fallback-hint">開かない場合は Ctrl+P（Macは ⌘+P）</span>
+        <span class="spacer"></span>
+        <span class="save-flash" id="saveFlash">保存しました</span>
+        <button class="btn btn-accent btn-sm" id="btnSaveHistory">履歴に保存</button>
+      </div>
+      <div class="preview-scroll">
+        <div id="printArea">
+          <div class="doc tab-active" id="docInvoice"></div>
+          <div class="doc" id="docPacking"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<datalist id="originList">
+  <option value="Japan"></option>
+  <option value="China"></option>
+  <option value="Thailand"></option>
+  <option value="Vietnam"></option>
+  <option value="Taiwan"></option>
+  <option value="Hong Kong"></option>
+  <option value="South Korea"></option>
+  <option value="Malaysia"></option>
+  <option value="USA"></option>
+</datalist>
+
+<!-- Settings modal -->
+<div class="modal-overlay" id="modalSettings">
+  <div class="modal">
+    <div class="modal-head"><h2>設定</h2><button class="modal-close" data-close>×</button></div>
+    <div class="modal-section">
+      <h3>会社情報の初期値</h3>
+      <div class="field-grid">
+        <div class="field full"><label>会社名</label><input type="text" id="s-shipname"></div>
+        <div class="field full"><label>住所</label><textarea id="s-shipaddr"></textarea></div>
+        <div class="field"><label>TEL</label><input type="text" id="s-shiptel"></div>
+        <div class="field"><label>通貨</label><input type="text" id="s-currency" class="mono" placeholder="JPY"></div>
+        <div class="field"><label>インボイス番号の接頭辞</label><input type="text" id="s-prefix" class="mono" placeholder="KNTK"></div>
+        <div class="field"><label>Payment Terms 初期値</label><input type="text" id="s-payterms"></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <h3>銀行口座情報の初期値</h3>
+      <div class="field-grid">
+        <div class="field full"><label>Bank Name</label><input type="text" id="s-bankname"></div>
+        <div class="field"><label>Branch</label><input type="text" id="s-bankbranch"></div>
+        <div class="field"><label>SWIFT Code</label><input type="text" id="s-bankswift" class="mono"></div>
+        <div class="field"><label>Account Type</label><input type="text" id="s-banktype"></div>
+        <div class="field"><label>Account Number</label><input type="text" id="s-bankno" class="mono"></div>
+        <div class="field"><label>Account Name</label><input type="text" id="s-bankacctname"></div>
+        <div class="field full"><label>Note</label><textarea id="s-banknote"></textarea></div>
+      </div>
+    </div>
+    <div class="row-inline" style="justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" data-close>閉じる</button>
+      <button class="btn btn-primary btn-sm" id="btnSettingsSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product master modal -->
+<div class="modal-overlay" id="modalProducts">
+  <div class="modal">
+    <div class="modal-head"><h2>商品マスタ <span class="count-badge" id="productCount"></span></h2><button class="modal-close" data-close>×</button></div>
+    <div class="modal-section">
+      <div class="mini-list" id="productList"></div>
+      <button class="btn btn-ghost btn-sm" id="btnAddProductRow" style="margin-top:10px;">＋ 商品を追加</button>
+    </div>
+    <div class="row-inline" style="justify-content:flex-end;">
+      <button class="btn btn-primary btn-sm" id="btnProductsClose">閉じる（自動保存）</button>
+    </div>
+  </div>
+</div>
+
+<!-- Consignee book modal -->
+<div class="modal-overlay" id="modalConsignees">
+  <div class="modal">
+    <div class="modal-head"><h2>取引先アドレス帳</h2><button class="modal-close" data-close>×</button></div>
+    <div class="modal-section">
+      <div class="mini-list" id="consigneeList"></div>
+      <button class="btn btn-ghost btn-sm" id="btnAddConsigneeRow" style="margin-top:10px;">＋ 取引先を追加</button>
+    </div>
+    <div class="row-inline" style="justify-content:flex-end;">
+      <button class="btn btn-primary btn-sm" id="btnConsigneesClose">閉じる（自動保存）</button>
+    </div>
+  </div>
+</div>
+
+<!-- History modal -->
+<div class="modal-overlay" id="modalHistory">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-head"><h2>保存済みインボイス履歴</h2><button class="modal-close" data-close>×</button></div>
+    <div class="mini-list" id="historyList" style="max-height:52vh;"></div>
+    <div class="row-inline" style="justify-content:flex-end;margin-top:12px;">
+      <button class="btn btn-ghost btn-sm" data-close>閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm / alert modal (used instead of window.confirm/alert, which some hosting
+     environments silently block, leaving buttons that appear to do nothing) -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head"><h2 id="confirmTitle">確認</h2></div>
+    <p id="confirmMessage" style="font-size:13px;line-height:1.6;margin:0 0 16px;"></p>
+    <div class="row-inline" style="justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" id="confirmCancelBtn">キャンセル</button>
+      <button class="btn btn-primary btn-sm" id="confirmOkBtn">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Backup modal -->
+<div class="modal-overlay" id="modalBackup">
+  <div class="modal">
+    <div class="modal-head"><h2>バックアップ</h2><button class="modal-close" data-close>×</button></div>
+    <p style="font-size:12px;color:var(--ink-muted);margin-top:-6px;">
+      このツールのデータ（設定・商品マスタ・取引先・履歴）は、このパソコンだけでなく、クラウド（Firebase）にも自動で保存されます。
+      それでも万一に備えて、下の「ファイルとしてダウンロード」でお使いのパソコンにも定期的に保存しておくことをお勧めします。
+    </p>
+    <div class="store-status" id="storeStatus">
+      <span class="dot"></span>
+      <span id="storeStatusText">追加の保存先を確認中…</span>
+    </div>
+    <div class="modal-section">
+      <h3>エクスポート（保存）</h3>
+      <p class="hint">ボタンを押すとファイルとして保存されます（「ダウンロード」フォルダなどに入ります）。</p>
+      <button class="btn btn-primary btn-sm" id="btnDownloadBackup">📥 ファイルとしてダウンロード</button>
+      <div style="margin-top:6px;">
+        <a id="backupFileLink" class="backup-file-link" download>保存できない場合はこちらのリンクを右クリック→「リンク先を別名で保存」</a>
+      </div>
+      <details style="margin-top:12px;">
+        <summary>テキストをコピーして保存する場合</summary>
+        <textarea class="backup-box" id="backupExport" readonly></textarea>
+        <button class="btn btn-ghost btn-sm" id="btnCopyBackup" style="margin-top:8px;">クリップボードにコピー</button>
+      </details>
+    </div>
+    <div class="modal-section">
+      <h3>インポート（復元）</h3>
+      <p class="hint">保存しておいたファイルを選んで読み込みます。</p>
+      <input type="file" id="backupFileInput" accept="application/json,.json">
+      <details style="margin-top:12px;">
+        <summary>テキストを貼り付けて復元する場合</summary>
+        <textarea class="backup-box" id="backupImport" placeholder="以前コピーしたバックアップ文字列をここに貼り付け"></textarea>
+        <button class="btn btn-danger btn-sm" id="btnRestoreBackup" style="margin-top:8px;">この内容で復元する</button>
+      </details>
+    </div>
+    <div class="row-inline" style="justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" data-close>閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- storage helpers ---------------- */
+  function loadLS(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch(e){ return fallback; }
+  }
+  function saveLS(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  }
+  function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+
+  var LS_SETTINGS = 'kntk.settings.v1';
+  var LS_PRODUCTS = 'kntk.products.v1';
+  var LS_CONSIGNEES = 'kntk.consignees.v1';
+  var LS_HISTORY = 'kntk.history.v1';
+  var LS_DRAFT = 'kntk.draft.v1';
+  var LS_LAST_BACKUP = 'kntk.lastBackupAt.v1';
+  var LS_BACKUP_SNOOZE = 'kntk.backupSnoozeUntil.v1';
+  var BACKUP_REMINDER_MS = 7*24*60*60*1000;   // remind if no backup in 7 days
+  var BACKUP_SNOOZE_MS = 2*24*60*60*1000;     // "後で" hides the banner for 2 days
+
+  var defaultSettings = {
+    shipper:{
+      name:"KANETAKA CO., Ltd.",
+      address:"#908 AROME DE JOIE, 3-25-1\nTaikodori, Nakamura-ku, Nagoya-shi, Aichi, 453-0811, Japan",
+      tel:"+81-80-2339-0812"
+    },
+    bank:{
+      name:"AICHI BANK,LTD.",
+      branch:"Nakamura Chuo Branch",
+      swift:"AICHJPJN",
+      acctType:"Savings",
+      acctNumber:"152-5035203",
+      acctName:"KANETAKA CO., Ltd.",
+      note:"All bank charges (including intermediary bank fees) are to be borne by the buyer."
+    },
+    currency:"JPY",
+    invoicePrefix:"KNTK",
+    paymentTerms:"Freight Collect"
+  };
+
+  var defaultProducts = [
+    {id:uid(), description:"SONY 4K Camcorder Handycam FDR-AX45A (Black)", code:"4548736141308", origin:"China", netWeight:0.6, unitPrice:102000},
+    {id:uid(), description:"SONY VLOGCAM ZV-E10M2X E PZ 16-50mm F3.5-5.6 OSS II E 55-210mm F4.5-6.3 OSS [Black]", code:"4548736160866", origin:"Thailand", netWeight:0.892, unitPrice:117000},
+    {id:uid(), description:"FUJIFILM X-T30 III XC13-33mmF3.5-6.3 OIS【black】", code:"4547410565522", origin:"Vietnam", netWeight:0.503, unitPrice:133000}
+  ];
+
+  var settings = loadLS(LS_SETTINGS, null) || JSON.parse(JSON.stringify(defaultSettings));
+  var products = loadLS(LS_PRODUCTS, null) || defaultProducts;
+  var consignees = loadLS(LS_CONSIGNEES, null) || [
+    {id:uid(), name:"ANGCO INTERNATIONAL TRADING COMPANY",
+     address:"Units 2308-2309, 23rd Floor, Block B, Kong Nam Industrial\nBuilding, 603 Castle Peak Road, Hong Kong\n(Accessed by Lift B1/ B2 of Block B)",
+     tel:"(+852) 2428 7930"}
+  ];
+  var history = loadLS(LS_HISTORY, null) || [];
+
+  /* ---------------- durable store (beyond browser-local storage) ----------------
+     localStorage is tied to one browser/tab/profile — it does not follow the person
+     to a different browser, a private window, or after "clear browsing data", and a
+     user has lost saved products this way. When this page is viewed inside a Claude
+     artifact viewer (not when opened as a bare URL in an ordinary browser tab — see
+     the artifact-capabilities contract), the "artifact" capability lets the page save
+     a small data file that lives with the artifact itself, independent of any one
+     browser. We use it as an additional, best-effort backing store for the
+     long-lived master data (settings/products/consignees/history) — never for the
+     in-progress draft, since a files-publish should stay infrequent and tied to an
+     explicit save action, not every keystroke. localStorage remains the immediate,
+     always-available cache; the durable store is layered on top when present. */
+  var artifactCap = null;
+  var artifactCapReady = (function(){
+    try{
+      if(window.claude && typeof window.claude.use === 'function'){
+        return window.claude.use('artifact').then(function(cap){ artifactCap = cap; return cap; }).catch(function(){ return null; });
+      }
+    }catch(e){}
+    return Promise.resolve(null);
+  })();
+
+  /* ---------------- Firebase cloud sync ----------------
+     A real database on a real server (not tied to this one browser/computer),
+     so the master data survives clearing this computer's browser data, moving
+     to a different computer, or opening a re-sent copy of this file — the
+     exact failure modes that caused real data loss before this was added.
+     Kept under its own top-level path so it never touches the existing
+     business system's data in the same Firebase project. Firebase problems
+     must never block the tool: localStorage stays the always-available base,
+     Firebase is layered on top only when it is actually reachable. */
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBQ3flrqjgVV-fgfVF3DvDsowLsQASYLUk",
+    authDomain: "trip-app-a1746.firebaseapp.com",
+    databaseURL: "https://trip-app-a1746-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "trip-app-a1746",
+    storageBucket: "trip-app-a1746.firebasestorage.app",
+    messagingSenderId: "529959327002",
+    appId: "1:529959327002:web:9e98a8aa9b6afae54208a3"
+  };
+  var FIREBASE_PATH = 'kntk_export_desk/data';
+  var fbRef = null;
+
+  function setCloudStatus(state, detail){
+    var dot = byId('storeStatus'), txt = byId('storeStatusText');
+    if(!dot || !txt) return;
+    if(state === 'active'){
+      dot.className = 'store-status is-active';
+      txt.innerHTML = '<b>クラウド同期：有効</b> — このパソコン以外の場所にも安全に保存されています。';
+    } else if(state === 'inactive'){
+      dot.className = 'store-status is-inactive';
+      txt.innerHTML = '<b>クラウド同期：オフライン（このパソコンのみに保存）</b>' + (detail ? ' — ' + detail : '') + '。定期的なバックアップを特にお勧めします。';
+    } else {
+      dot.className = 'store-status';
+      txt.textContent = 'クラウド同期を確認中…';
+    }
+  }
+
+  var fbReady = (function(){
+    try{
+      if(typeof firebase === 'undefined'){
+        setCloudStatus('inactive', 'この端末でFirebaseの読み込みに失敗しました');
+        return Promise.resolve(null);
+      }
+      firebase.initializeApp(FIREBASE_CONFIG);
+      return firebase.auth().signInAnonymously().then(function(){
+        fbRef = firebase.database().ref(FIREBASE_PATH);
+        setCloudStatus('active');
+        return fbRef;
+      }).catch(function(err){
+        if(window.console) console.warn('firebase sign-in failed', err);
+        setCloudStatus('inactive', 'サーバーに接続できませんでした');
+        return null;
+      });
+    }catch(e){
+      setCloudStatus('inactive', '初期化に失敗しました');
+      return Promise.resolve(null);
+    }
+  })();
+
+  // On load, adopt whatever is already in the cloud as the source of truth —
+  // it reflects saves made from ANY computer, not just this one. If nothing
+  // is there yet, seed it from whatever this computer currently holds.
+  fbReady.then(function(ref){
+    if(!ref) return;
+    return ref.once('value').then(function(snap){
+      var remote = snap.val();
+      if(remote && typeof remote === 'object'){
+        if(remote.settings) settings = remote.settings;
+        if(remote.products) products = remote.products;
+        if(remote.consignees) consignees = remote.consignees;
+        if(remote.history) history = remote.history;
+        saveLS(LS_SETTINGS, settings);
+        saveLS(LS_PRODUCTS, products);
+        saveLS(LS_CONSIGNEES, consignees);
+        saveLS(LS_HISTORY, history);
+        renderProductOptions();
+        renderConsigneeOptions();
+        checkBackupReminder();
+      } else {
+        persistMasterData();
+      }
+    }).catch(function(err){
+      if(window.console) console.warn('firebase initial read failed', err);
+    });
+  });
+
+  function persistMasterData(){
+    saveLS(LS_SETTINGS, settings);
+    saveLS(LS_PRODUCTS, products);
+    saveLS(LS_CONSIGNEES, consignees);
+    saveLS(LS_HISTORY, history);
+    if(artifactCap){
+      artifactCap.publish({
+        'data/store.json': JSON.stringify({settings:settings, products:products, consignees:consignees, history:history})
+      }).catch(function(err){
+        // Best-effort only — localStorage above already has the data. A rejection
+        // here (not_granted / capability_disabled / rate_limited / etc.) is not
+        // shown to the person; the tool keeps working from local storage.
+        if(window.console) console.warn('durable store publish failed', err && err.code);
+      });
+    }
+    if(fbRef){
+      fbRef.set({settings:settings, products:products, consignees:consignees, history:history}).catch(function(err){
+        // Best-effort only — localStorage above already has the data.
+        if(window.console) console.warn('firebase save failed', err);
+      });
+    }
+    checkBackupReminder();
+  }
+
+  /* ---------------- backup reminder banner ----------------
+     Saves above are already automatic — this banner is a nudge toward the
+     *external* copy-paste backup (outside this browser entirely), since that
+     is the only copy that survives a cleared browser / lost device even when
+     the durable store above is not active for this viewer (see note above
+     artifactCapReady). Shown only when there is meaningful data worth losing,
+     and only after some days have passed since the last backup or dismissal. */
+  function hasMeaningfulData(){
+    return products.length > 3 || consignees.length > 1 || history.length > 0;
+  }
+  function checkBackupReminder(){
+    var banner = byId('backupBanner');
+    if(!banner) return;
+    if(!hasMeaningfulData()){ banner.classList.add('hidden'); return; }
+    var now = Date.now();
+    var snoozeUntil = loadLS(LS_BACKUP_SNOOZE, 0);
+    if(snoozeUntil && now < snoozeUntil){ banner.classList.add('hidden'); return; }
+    var lastBackup = loadLS(LS_LAST_BACKUP, 0);
+    var needsBackup = !lastBackup || (now - lastBackup) > BACKUP_REMINDER_MS;
+    banner.classList.toggle('hidden', !needsBackup);
+  }
+
+  // On load, once the capability (if any) resolves, adopt the durable store as the
+  // source of truth for master data — it reflects saves made from ANY browser, not
+  // just this one. If no store exists yet, seed it from whatever this browser
+  // currently holds, so the very first save establishes the durable copy.
+  artifactCapReady.then(function(cap){
+    if(!cap) return;
+    return fetch('data/store.json', {cache:'no-store'}).then(function(res){
+      if(!res.ok) throw new Error('no store yet');
+      return res.json();
+    }).then(function(remote){
+      if(remote && typeof remote === 'object'){
+        if(remote.settings) settings = remote.settings;
+        if(remote.products) products = remote.products;
+        if(remote.consignees) consignees = remote.consignees;
+        if(remote.history) history = remote.history;
+        saveLS(LS_SETTINGS, settings);
+        saveLS(LS_PRODUCTS, products);
+        saveLS(LS_CONSIGNEES, consignees);
+        saveLS(LS_HISTORY, history);
+        renderProductOptions();
+        renderConsigneeOptions();
+        checkBackupReminder();
+      }
+    }).catch(function(){
+      // No durable store yet — create it from this browser's current data.
+      persistMasterData();
+    });
+  });
+
+
+  function freshDraft(){
+    var today = new Date();
+    var iso = today.toISOString().slice(0,10);
+    return {
+      date: iso,
+      invoiceNo: buildInvoiceNo(iso, nextSeqForDate(iso)),
+      invoiceNoManual:false,
+      paymentTerms: settings.paymentTerms,
+      aircraft:"", onOrAbout:"", from:"", to:"", tradeTerms:"",
+      shipper: JSON.parse(JSON.stringify(settings.shipper)),
+      consignee: {name:"", address:"", tel:""},
+      currency: settings.currency,
+      items: [],
+      cartonCount: 1,
+      cartonDims: {1:{l:"",w:"",h:"",g:""}},
+      grossWeight: "",
+      bank: JSON.parse(JSON.stringify(settings.bank))
+    };
+  }
+
+  function buildInvoiceNo(iso, seq){
+    return (settings.invoicePrefix||'KNTK') + '-' + iso.replace(/-/g,'') + '-' + seq;
+  }
+  function nextSeqForDate(iso){
+    var max = 0;
+    history.forEach(function(h){
+      if(h.date === iso){
+        var m = /-(\d+)$/.exec(h.invoiceNo||'');
+        if(m) max = Math.max(max, parseInt(m[1],10));
+      }
+    });
+    return max+1;
+  }
+
+  var draft = loadLS(LS_DRAFT, null) || freshDraft();
+  // migrate cartonDims keys to numbers-friendly object, ensure at least one item id exists etc.
+  if(!draft.cartonDims) draft.cartonDims = {1:{l:"",w:"",h:""}};
+  if(!draft.items) draft.items = [];
+
+  function saveDraft(){ saveLS(LS_DRAFT, draft); }
+
+  /* ---------------- formatting helpers ---------------- */
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  function formatDisplayDate(iso){
+    if(!iso) return "";
+    var p = iso.split("-"); if(p.length!==3) return iso;
+    var y=parseInt(p[0],10), m=parseInt(p[1],10), d=parseInt(p[2],10);
+    return MONTHS[m-1] + "." + d + "." + y;
+  }
+  function trimNum(n){
+    if(n===""||n===null||n===undefined||isNaN(n)) return 0;
+    n = Math.round(n*1000)/1000;
+    return n;
+  }
+  function formatWeight(n){ return trimNum(n).toString(); }
+  function formatQty(n){ n = parseInt(n,10)||0; return n.toLocaleString('en-US'); }
+  function formatMoney(cur, n){
+    n = parseFloat(n); if(isNaN(n)) n=0;
+    return (cur||'JPY') + ' ' + n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function formatMoneyPlain(n){
+    n = parseFloat(n); if(isNaN(n)) n=0;
+    return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function esc(s){
+    return (s===undefined||s===null? "": String(s)).replace(/[&<>]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});
+  }
+  function nl2br(s){ return esc(s).replace(/\n/g,'<br>'); }
+
+  function computeTotals(){
+    var qty=0, weight=0, priceSum=0, amount=0;
+    draft.items.forEach(function(it){
+      var q = parseFloat(it.qty)||0;
+      var w = parseFloat(it.netWeight)||0;
+      var p = parseFloat(it.unitPrice)||0;
+      qty += q; weight += w; priceSum += p; amount += q*p;
+    });
+    return {qty:qty, weight:trimNum(weight), priceSum:priceSum, amount:amount};
+  }
+
+  /* ---------------- toast ---------------- */
+  var toastTimer=null;
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  /* ---------------- render: shipment form fields (only on load / full replace) ---------------- */
+  function fillFormFromDraft(){
+    byId('f-date').value = draft.date;
+    byId('f-invno').value = draft.invoiceNo;
+    byId('f-payterms').value = draft.paymentTerms;
+    byId('f-aircraft').value = draft.aircraft;
+    byId('f-onabout').value = draft.onOrAbout;
+    byId('f-from').value = draft.from;
+    byId('f-to').value = draft.to;
+    byId('f-tradeterms').value = draft.tradeTerms;
+    byId('f-shipname').value = draft.shipper.name;
+    byId('f-shipaddr').value = draft.shipper.address;
+    byId('f-shiptel').value = draft.shipper.tel;
+    byId('f-consname').value = draft.consignee.name;
+    byId('f-consaddr').value = draft.consignee.address;
+    byId('f-constel').value = draft.consignee.tel;
+    byId('f-bankname').value = draft.bank.name;
+    byId('f-bankbranch').value = draft.bank.branch;
+    byId('f-bankswift').value = draft.bank.swift;
+    byId('f-banktype').value = draft.bank.acctType;
+    byId('f-bankno').value = draft.bank.acctNumber;
+    byId('f-bankacctname').value = draft.bank.acctName;
+    byId('f-banknote').value = draft.bank.note;
+    renderItemsTable();
+    renderCartonDims();
+    renderConsigneeOptions();
+    renderProductOptions();
+    renderAll();
+  }
+  function byId(id){ return document.getElementById(id); }
+
+  /* ---------------- items table ---------------- */
+  function renderItemsTable(){
+    var tbody = byId('itemsBody');
+    tbody.innerHTML = '';
+    draft.items.forEach(function(it){
+      var tr = document.createElement('tr');
+      tr.dataset.id = it.id;
+
+      var cartonSelect = '<select class="mono" data-field="carton">';
+      for(var c=1;c<=draft.cartonCount;c++){
+        cartonSelect += '<option value="'+c+'"'+(it.carton==c?' selected':'')+'>'+c+'</option>';
+      }
+      cartonSelect += '</select>';
+
+      tr.innerHTML =
+        '<td class="col-carton">'+cartonSelect+'</td>'+
+        '<td><input type="text" data-field="description" value="'+escAttr(it.description)+'" placeholder="品名"></td>'+
+        '<td><input type="text" data-field="code" class="mono" value="'+escAttr(it.code)+'" placeholder="型番/JAN"></td>'+
+        '<td class="col-origin"><input type="text" data-field="origin" list="originList" value="'+escAttr(it.origin)+'"></td>'+
+        '<td class="col-weight"><input type="number" step="0.001" min="0" data-field="netWeight" class="mono" value="'+esc(it.netWeight)+'"></td>'+
+        '<td class="col-qty"><input type="number" step="1" min="0" data-field="qty" class="mono" value="'+esc(it.qty)+'"></td>'+
+        '<td class="col-price"><input type="number" step="1" min="0" data-field="unitPrice" class="mono" value="'+esc(it.unitPrice)+'"></td>'+
+        '<td class="col-amount amount-cell" data-amount>'+formatMoneyPlain((parseFloat(it.qty)||0)*(parseFloat(it.unitPrice)||0))+'</td>'+
+        '<td class="col-op3"><button class="row-dup" data-dup title="この商品を複製（別カートン用）">⧉</button></td>'+
+        '<td class="col-op2"><button class="row-save" data-save-master title="よく使う商品として保存">💾</button></td>'+
+        '<td class="col-op"><button class="row-del" data-del title="削除">✕</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+  function escAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
+
+  byId('itemsBody').addEventListener('input', function(e){
+    var tr = e.target.closest('tr'); if(!tr) return;
+    var id = tr.dataset.id;
+    var item = draft.items.find(function(i){return i.id===id;});
+    if(!item) return;
+    var field = e.target.dataset.field;
+    if(!field) return;
+    if(field==='carton'){ item.carton = parseInt(e.target.value,10)||1; }
+    else if(field==='netWeight' || field==='qty' || field==='unitPrice'){ item[field] = e.target.value===''? '' : parseFloat(e.target.value); }
+    else { item[field] = e.target.value; }
+    var amt = (parseFloat(item.qty)||0)*(parseFloat(item.unitPrice)||0);
+    tr.querySelector('[data-amount]').textContent = formatMoneyPlain(amt);
+    saveDraft();
+    renderAll();
+  });
+  byId('itemsBody').addEventListener('click', function(e){
+    if(e.target.closest('[data-dup]')){
+      var trDup = e.target.closest('tr');
+      var srcId = trDup.dataset.id;
+      var idx = draft.items.findIndex(function(i){return i.id===srcId;});
+      if(idx === -1) return;
+      var src = draft.items[idx];
+      var copy = Object.assign({}, src, {id: uid()});
+      // If there's more than one carton, default the copy to "the next carton" so the
+      // common case — same product, split across the next box — is a single click away.
+      // She can still change the carton (and quantity) with the dropdown afterward.
+      if(draft.cartonCount > 1){
+        copy.carton = (parseInt(src.carton,10) % draft.cartonCount) + 1;
+      }
+      draft.items.splice(idx+1, 0, copy);
+      renderItemsTable();
+      saveDraft();
+      renderAll();
+      showToast('「' + (src.description || '商品') + '」を複製しました');
+      return;
+    }
+    if(e.target.closest('[data-del]')){
+      var tr = e.target.closest('tr');
+      var id = tr.dataset.id;
+      draft.items = draft.items.filter(function(i){return i.id!==id;});
+      renderItemsTable();
+      saveDraft();
+      renderAll();
+      return;
+    }
+    if(e.target.closest('[data-save-master]')){
+      var tr2 = e.target.closest('tr');
+      var item = draft.items.find(function(i){return i.id===tr2.dataset.id;});
+      if(!item) return;
+      if(!item.description || !item.description.trim()){
+        showToast('品名を入力してから保存してください');
+        return;
+      }
+      var existing = null;
+      if(item.code && item.code.trim()){
+        existing = products.find(function(p){ return p.code && p.code.trim() && p.code.trim()===item.code.trim(); });
+      }
+      if(!existing){
+        existing = products.find(function(p){ return p.description.trim()===item.description.trim() && (p.code||'').trim()===(item.code||'').trim(); });
+      }
+      if(existing){
+        existing.description = item.description;
+        existing.code = item.code;
+        existing.origin = item.origin;
+        existing.netWeight = item.netWeight;
+        existing.unitPrice = item.unitPrice;
+        showToast('商品マスタを更新しました：' + item.description);
+      } else {
+        products.push({id:uid(), description:item.description, code:item.code, origin:item.origin, netWeight:item.netWeight, unitPrice:item.unitPrice});
+        showToast('よく使う商品に保存しました：' + item.description);
+      }
+      persistMasterData();
+      renderProductOptions();
+      return;
+    }
+  });
+
+  function addItem(base){
+    var it = Object.assign({id:uid(), carton:1, description:"", code:"", origin:"", netWeight:"", qty:1, unitPrice:""}, base||{});
+    draft.items.push(it);
+    renderItemsTable();
+    saveDraft();
+    renderAll();
+  }
+
+  byId('btnAddBlankItem').addEventListener('click', function(){ addItem({}); });
+  byId('btnAddFromMaster').addEventListener('click', function(){
+    var pid = productComboSelectedId;
+    if(!pid){ showToast('先に商品を選択してください'); return; }
+    var p = products.find(function(x){return x.id===pid;});
+    if(!p) return;
+    addItem({description:p.description, code:p.code, origin:p.origin, netWeight:p.netWeight, unitPrice:p.unitPrice, qty:1});
+    // Reset the picker back to its placeholder so the next product can be picked — this
+    // does NOT remove the product from "よく使う商品" (it's still saved; see the toast
+    // below and the 商品マスタを管理 list), it only clears the current selection.
+    productComboSelectedId = '';
+    updateProductComboTrigger();
+    showToast('「' + p.description + '」を商品明細に追加しました（マスタからは削除されていません）');
+  });
+
+  function sortedProducts(){
+    return products.slice().sort(function(a,b){
+      return (a.description||'').localeCompare((b.description||''), undefined, {sensitivity:'base', numeric:true});
+    });
+  }
+
+  /* custom scrollable combo box for "よく使う商品から追加" (replaces a native <select>
+     so the option list has a fixed height with its own scrollbar instead of one long list) */
+  var productComboSelectedId = '';
+  function renderProductOptions(){
+    var panel = byId('productComboPanel');
+    if(!byId('productComboSearch')){
+      panel.innerHTML =
+        '<div class="combo-search-wrap"><input type="text" class="combo-search" id="productComboSearch" placeholder="商品名・型番/コードで検索" autocomplete="off"></div>'+
+        '<div class="combo-options" id="productComboOptions"></div>';
+      byId('productComboSearch').addEventListener('input', function(){
+        renderComboOptionsList(this.value);
+      });
+    }
+    var allList = sortedProducts();
+    if(productComboSelectedId && !allList.some(function(p){return p.id===productComboSelectedId;})){
+      productComboSelectedId = '';
+    }
+    renderComboOptionsList(byId('productComboSearch').value);
+    updateProductComboTrigger();
+  }
+  function renderComboOptionsList(query){
+    var optionsEl = byId('productComboOptions');
+    var list = sortedProducts();
+    var q = (query||'').trim().toLowerCase();
+    if(q){
+      list = list.filter(function(p){
+        return (p.description||'').toLowerCase().indexOf(q) !== -1 ||
+               (p.code||'').toLowerCase().indexOf(q) !== -1;
+      });
+    }
+    if(!list.length){
+      optionsEl.innerHTML = '<div class="combo-empty">'+(q ? '一致する商品が見つかりません' : '登録された商品がありません')+'</div>';
+    } else {
+      optionsEl.innerHTML = list.map(function(p){
+        return '<div class="combo-option" data-id="'+p.id+'">'+esc(p.description)+
+          (p.code? ' <span class="mono" style="color:var(--ink-muted);">('+esc(p.code)+')</span>':'')+'</div>';
+      }).join('');
+    }
+  }
+  function updateProductComboTrigger(){
+    var trigger = byId('productComboTrigger');
+    var p = products.find(function(x){return x.id===productComboSelectedId;});
+    if(p){
+      trigger.textContent = p.description + (p.code? ' ('+p.code+')':'');
+      trigger.classList.remove('placeholder');
+    } else {
+      trigger.textContent = '— よく使う商品から追加 —';
+      trigger.classList.add('placeholder');
+    }
+  }
+  byId('productComboTrigger').addEventListener('click', function(e){
+    e.stopPropagation();
+    var panel = byId('productComboPanel');
+    var opening = !panel.classList.contains('open');
+    panel.classList.toggle('open');
+    if(opening){
+      var search = byId('productComboSearch');
+      if(search){
+        search.value = '';
+        renderComboOptionsList('');
+        setTimeout(function(){ search.focus(); }, 0);
+      }
+    }
+  });
+  byId('productComboPanel').addEventListener('click', function(e){
+    var opt = e.target.closest('.combo-option'); if(!opt) return;
+    productComboSelectedId = opt.dataset.id;
+    updateProductComboTrigger();
+    byId('productComboPanel').classList.remove('open');
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('#productCombo')) byId('productComboPanel').classList.remove('open');
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape') byId('productComboPanel').classList.remove('open');
+  });
+
+  /* ---------------- carton dims ---------------- */
+  function renderCartonDims(){
+    byId('cartonCountVal').textContent = draft.cartonCount;
+    byId('sumCartons').textContent = draft.cartonCount;
+    var list = byId('cartonDimsList');
+    list.innerHTML = '';
+    for(var c=1;c<=draft.cartonCount;c++){
+      if(!draft.cartonDims[c]) draft.cartonDims[c] = {l:"",w:"",h:"",g:""};
+      var d = draft.cartonDims[c];
+      // one-time migration: an older draft may have a single manually-entered "総グロス重量"
+      // (draft.grossWeight) from before gross weight was tracked per carton — if this is a
+      // single-carton draft and the per-carton value hasn't been set yet, carry it over so
+      // the number isn't silently lost.
+      if(c===1 && draft.cartonCount===1 && !d.g && draft.grossWeight){ d.g = draft.grossWeight; }
+      var row = document.createElement('div');
+      row.className = 'carton-dim-row';
+      row.dataset.carton = c;
+      row.innerHTML =
+        '<span class="tag">Carton '+c+'</span>'+
+        '<input type="number" step="0.1" min="0" placeholder="L (cm)" data-dim="l" value="'+esc(d.l)+'">'+
+        '<input type="number" step="0.1" min="0" placeholder="W (cm)" data-dim="w" value="'+esc(d.w)+'">'+
+        '<input type="number" step="0.1" min="0" placeholder="H (cm)" data-dim="h" value="'+esc(d.h)+'">'+
+        '<input type="number" step="0.1" min="0" placeholder="Gross (kg)" data-dim="g" value="'+esc(d.g)+'">';
+      list.appendChild(row);
+    }
+    updateGrossTotalDisplay();
+    // refresh item carton <select> option sets without full rebuild (avoid losing typed focus elsewhere)
+    document.querySelectorAll('#itemsBody select[data-field="carton"]').forEach(function(sel){
+      var cur = sel.value;
+      var opts = '';
+      for(var c=1;c<=draft.cartonCount;c++){ opts += '<option value="'+c+'"'+(cur==c?' selected':'')+'>'+c+'</option>'; }
+      sel.innerHTML = opts;
+      if(parseInt(cur,10) > draft.cartonCount){ sel.value = draft.cartonCount; sel.dispatchEvent(new Event('input',{bubbles:true})); }
+    });
+  }
+  byId('cartonDimsList').addEventListener('input', function(e){
+    var row = e.target.closest('.carton-dim-row'); if(!row) return;
+    var c = row.dataset.carton;
+    var dim = e.target.dataset.dim;
+    if(!draft.cartonDims[c]) draft.cartonDims[c] = {l:"",w:"",h:"",g:""};
+    draft.cartonDims[c][dim] = e.target.value;
+    updateGrossTotalDisplay();
+    saveDraft();
+    renderAll();
+  });
+  function cartonGrossTotal(){
+    var sum = 0;
+    for(var c=1;c<=draft.cartonCount;c++){
+      var d = draft.cartonDims[c]||{};
+      var v = parseFloat(d.g);
+      if(!isNaN(v)) sum += v;
+    }
+    return sum;
+  }
+  function updateGrossTotalDisplay(){
+    var el = byId('sumGrossWeight');
+    if(el) el.textContent = formatWeight(cartonGrossTotal());
+  }
+  byId('btnCartonPlus').addEventListener('click', function(){
+    draft.cartonCount = Math.min(30, draft.cartonCount+1);
+    renderCartonDims();
+    saveDraft();
+    renderAll();
+  });
+  byId('btnDuplicateToNewCarton').addEventListener('click', function(){
+    if(draft.cartonCount >= 30){
+      showToast('カートンはこれ以上増やせません（最大30）');
+      return;
+    }
+    var lastCarton = draft.cartonCount;
+    var sourceItems = draft.items.filter(function(i){ return (parseInt(i.carton,10)||1) === lastCarton; });
+    if(!sourceItems.length){
+      showToast('コピーする商品がありません（カートン'+lastCarton+'に商品を登録してからお試しください）');
+      return;
+    }
+    draft.cartonCount += 1;
+    var newCarton = draft.cartonCount;
+    sourceItems.forEach(function(src){
+      draft.items.push(Object.assign({}, src, {id: uid(), carton: newCarton}));
+    });
+    renderCartonDims();
+    renderItemsTable();
+    saveDraft();
+    renderAll();
+    showToast('カートン'+newCarton+'を追加し、商品を'+sourceItems.length+'件コピーしました');
+  });
+  byId('btnCartonMinus').addEventListener('click', function(){
+    if(draft.cartonCount<=1) return;
+    var maxUsed = draft.items.reduce(function(m,i){return Math.max(m, parseInt(i.carton,10)||1);},1);
+    if(maxUsed >= draft.cartonCount){
+      showToast('カートン'+draft.cartonCount+'を使用中の商品があるため減らせません');
+      return;
+    }
+    delete draft.cartonDims[draft.cartonCount];
+    draft.cartonCount -= 1;
+    renderCartonDims();
+    saveDraft();
+    renderAll();
+  });
+
+  /* ---------------- simple field bindings (shipment/shipper/consignee/bank) ---------------- */
+  function bindText(id, getter, setter){
+    byId(id).addEventListener('input', function(e){
+      setter(e.target.value);
+      saveDraft();
+      renderAll();
+    });
+  }
+  bindText('f-date', null, function(v){
+    draft.date = v;
+    if(!draft.invoiceNoManual){ draft.invoiceNo = buildInvoiceNo(v, nextSeqForDate(v)); byId('f-invno').value = draft.invoiceNo; }
+  });
+  byId('f-invno').addEventListener('input', function(e){ draft.invoiceNo = e.target.value; draft.invoiceNoManual = true; saveDraft(); renderAll(); });
+  byId('btnRenumber').addEventListener('click', function(){
+    draft.invoiceNo = buildInvoiceNo(draft.date, nextSeqForDate(draft.date));
+    draft.invoiceNoManual = false;
+    byId('f-invno').value = draft.invoiceNo;
+    saveDraft(); renderAll();
+  });
+  bindText('f-payterms', null, function(v){ draft.paymentTerms = v; });
+  bindText('f-aircraft', null, function(v){ draft.aircraft = v; });
+  bindText('f-onabout', null, function(v){ draft.onOrAbout = v; });
+  bindText('f-from', null, function(v){ draft.from = v; });
+  bindText('f-to', null, function(v){ draft.to = v; });
+  bindText('f-tradeterms', null, function(v){ draft.tradeTerms = v; });
+
+  bindText('f-shipname', null, function(v){ draft.shipper.name = v; });
+  bindText('f-shipaddr', null, function(v){ draft.shipper.address = v; });
+  bindText('f-shiptel', null, function(v){ draft.shipper.tel = v; });
+  byId('btnShipperReset').addEventListener('click', function(){
+    draft.shipper = JSON.parse(JSON.stringify(settings.shipper));
+    byId('f-shipname').value = draft.shipper.name;
+    byId('f-shipaddr').value = draft.shipper.address;
+    byId('f-shiptel').value = draft.shipper.tel;
+    saveDraft(); renderAll();
+  });
+
+  bindText('f-consname', null, function(v){ draft.consignee.name = v; });
+  bindText('f-consaddr', null, function(v){ draft.consignee.address = v; });
+  bindText('f-constel', null, function(v){ draft.consignee.tel = v; });
+
+  byId('f-consignee-pick').addEventListener('change', function(e){
+    var id = e.target.value; if(!id) return;
+    var c = consignees.find(function(x){return x.id===id;});
+    if(!c) return;
+    draft.consignee = {name:c.name, address:c.address, tel:c.tel};
+    byId('f-consname').value = c.name;
+    byId('f-consaddr').value = c.address;
+    byId('f-constel').value = c.tel;
+    saveDraft(); renderAll();
+  });
+  byId('btnSaveConsignee').addEventListener('click', function(){
+    if(!draft.consignee.name){ showToast('会社名を入力してください'); return; }
+    consignees.push({id:uid(), name:draft.consignee.name, address:draft.consignee.address, tel:draft.consignee.tel});
+    persistMasterData();
+    renderConsigneeOptions();
+    showToast('取引先を保存しました');
+  });
+  function renderConsigneeOptions(){
+    var sel = byId('f-consignee-pick');
+    sel.innerHTML = '<option value="">— 保存済みの取引先から選択 —</option>' +
+      consignees.map(function(c){ return '<option value="'+c.id+'">'+esc(c.name)+'</option>'; }).join('');
+  }
+
+  bindText('f-bankname', null, function(v){ draft.bank.name = v; });
+  bindText('f-bankbranch', null, function(v){ draft.bank.branch = v; });
+  bindText('f-bankswift', null, function(v){ draft.bank.swift = v; });
+  bindText('f-banktype', null, function(v){ draft.bank.acctType = v; });
+  bindText('f-bankno', null, function(v){ draft.bank.acctNumber = v; });
+  bindText('f-bankacctname', null, function(v){ draft.bank.acctName = v; });
+  bindText('f-banknote', null, function(v){ draft.bank.note = v; });
+
+  /* ---------------- preview / doc build ---------------- */
+  function headBlockHTML(){
+    return ''+
+      '<div class="doc-title">INVOICE_TITLE_PLACEHOLDER</div>'+
+      '<div class="doc-metarow"><span class="metalabel">DATE：</span><span>'+esc(formatDisplayDate(draft.date))+'</span></div>'+
+      '<div class="doc-metarow" style="margin-top:-8px;"><span class="metalabel">NO. </span><span>'+esc(draft.invoiceNo)+'</span></div>'+
+      '<div class="doc-head">'+
+        '<div class="left">'+
+          '<div class="doc-block-title">Shipper</div>'+
+          '<div>'+esc(draft.shipper.name)+'</div>'+
+          '<div class="doc-addr">'+nl2br(draft.shipper.address)+'</div>'+
+          '<div style="margin-top:4px;">TEL：'+esc(draft.shipper.tel)+'</div>'+
+          '<div class="doc-block-title" style="margin-top:12px;">Consignee</div>'+
+          '<div>'+esc(draft.consignee.name)+'</div>'+
+          '<div class="doc-addr">'+nl2br(draft.consignee.address)+'</div>'+
+          '<div style="margin-top:4px;">TEL：'+esc(draft.consignee.tel)+'</div>'+
+        '</div>'+
+        '<div class="right">'+
+          '<div class="doc-kv"><span class="k">by Aircraft：</span><span>'+esc(draft.aircraft)+'</span></div>'+
+          '<div class="doc-kv"><span class="k">On or About：</span><span>'+esc(draft.onOrAbout)+'</span></div>'+
+          '<div class="doc-kv"><span class="k">From：</span><span>'+esc(draft.from)+'</span></div>'+
+          '<div class="doc-kv"><span class="k">To：</span><span>'+esc(draft.to)+'</span></div>'+
+          '<div class="doc-kv"><span class="k">Trade Terms：</span><span>'+esc(draft.tradeTerms)+'</span></div>'+
+          '<div class="doc-kv" style="margin-top:10px;"><span class="k">Payment Terms：</span><span>'+esc(draft.paymentTerms)+'</span></div>'+
+        '</div>'+
+      '</div>';
+  }
+
+  function bankBlockHTML(){
+    return ''+
+      '<div class="bank-title">Remittance Information</div>'+
+      '<div class="bank-line">Bank Name：'+esc(draft.bank.name)+'</div>'+
+      '<div class="bank-line">Branch：'+esc(draft.bank.branch)+'</div>'+
+      '<div class="bank-line">SWIFT Code：'+esc(draft.bank.swift)+'</div>'+
+      '<div class="bank-line">Account Type：'+esc(draft.bank.acctType)+'</div>'+
+      '<div class="bank-line">Account Number：'+esc(draft.bank.acctNumber)+'</div>'+
+      '<div class="bank-line">Account Name：'+esc(draft.bank.acctName)+'</div>'+
+      '<div class="note">Note：'+esc(draft.bank.note)+'</div>';
+  }
+
+  function groupedItems(){
+    var groups = {};
+    draft.items.forEach(function(it){
+      var c = it.carton||1;
+      if(!groups[c]) groups[c]=[];
+      groups[c].push(it);
+    });
+    return groups;
+  }
+
+  function buildInvoiceDoc(){
+    var totals = computeTotals();
+    var multi = draft.cartonCount > 1;
+    var groups = groupedItems();
+    var rows = '';
+    if(multi){
+      for(var c=1;c<=draft.cartonCount;c++){
+        rows += '<tr class="carton-sep"><td colspan="6">[ Carton '+c+' ]</td></tr>';
+        (groups[c]||[]).forEach(function(it){ rows += invoiceRowHTML(it); });
+      }
+    } else {
+      draft.items.forEach(function(it){ rows += invoiceRowHTML(it); });
+    }
+    if(!draft.items.length){
+      rows = '<tr><td colspan="6" style="text-align:center;color:#888;">商品明細を入力してください</td></tr>';
+    }
+    var html = headBlockHTML().replace('INVOICE_TITLE_PLACEHOLDER','INVOICE') +
+      '<table class="doc-table" style="margin-top:10px;">'+
+      '<thead><tr><th style="width:34%;">Description</th><th>Origin</th><th>Net Weight</th><th>Quanity</th><th>Unit Price</th><th>Total Amount</th></tr></thead>'+
+      '<tbody>'+rows+
+      '<tr class="total-row"><td style="text-align:center;">Total</td><td></td>'+
+      '<td class="num">'+formatWeight(totals.weight)+'</td>'+
+      '<td class="num">'+formatQty(totals.qty)+'</td>'+
+      '<td class="num">'+esc(draft.currency)+' '+formatMoneyPlain(totals.priceSum)+'</td>'+
+      '<td class="num">'+esc(draft.currency)+' '+formatMoneyPlain(totals.amount)+'</td></tr>'+
+      '</tbody></table>'+
+      '<div class="doc-foot"><div class="left">'+bankBlockHTML()+'</div><div class="right">'+
+        '<div class="kv2"><span class="k">Number of pieces</span><span class="v">'+formatQty(totals.qty)+'</span></div>'+
+        '<div class="kv2"><span class="k">Gross weight (kg)</span><span class="v">'+(cartonGrossTotal()>0? formatWeight(cartonGrossTotal()):'-')+'</span></div>'+
+        '<div class="kv2"><span class="k">Number of Cartons</span><span class="v">'+draft.cartonCount+'</span></div>'+
+        '<div class="doc-sign">Signature<div class="line"></div></div>'+
+      '</div></div>'+
+      '<div class="doc-thanks">Thank you very much for your business. We\'re looking forward to serving you again.</div>';
+    byId('docInvoice').innerHTML = html;
+  }
+  function invoiceRowHTML(it){
+    var amt = (parseFloat(it.qty)||0)*(parseFloat(it.unitPrice)||0);
+    var desc = (it.description||'') + (it.code? ' '+it.code : '');
+    return '<tr><td>'+esc(desc)+'</td><td>'+esc(it.origin)+'</td>'+
+      '<td class="num">'+formatWeight(it.netWeight)+'</td>'+
+      '<td class="num">'+formatQty(it.qty)+'</td>'+
+      '<td class="num">'+esc(draft.currency)+' '+formatMoneyPlain(it.unitPrice)+'</td>'+
+      '<td class="num">'+esc(draft.currency)+' '+formatMoneyPlain(amt)+'</td></tr>';
+  }
+
+  function buildPackingDoc(){
+    var totals = computeTotals();
+    var multi = draft.cartonCount > 1;
+    var groups = groupedItems();
+    var rows = '';
+    if(multi){
+      for(var c=1;c<=draft.cartonCount;c++){
+        rows += '<tr class="carton-sep"><td colspan="4">[ Carton '+c+' ]</td></tr>';
+        (groups[c]||[]).forEach(function(it){ rows += packingRowHTML(it); });
+      }
+    } else {
+      draft.items.forEach(function(it){ rows += packingRowHTML(it); });
+    }
+    if(!draft.items.length){
+      rows = '<tr><td colspan="4" style="text-align:center;color:#888;">商品明細を入力してください</td></tr>';
+    }
+    var dimsHTML = '';
+    if(multi){
+      for(var c2=1;c2<=draft.cartonCount;c2++){
+        var d = draft.cartonDims[c2]||{};
+        var grossLabel = d.g? formatWeight(d.g)+' kg' : '-';
+        dimsHTML += '<div class="dims-line"><span>[ Carton '+c2+' ]</span><span class="v mono">'+dimsText(d)+'　Gross: '+grossLabel+'</span></div>';
+      }
+    } else {
+      var d0 = draft.cartonDims[1]||{};
+      dimsHTML = '<div class="kv2"><span class="k">box dimensions</span><span class="v">'+dimsText(d0)+'</span></div>';
+    }
+    var html = headBlockHTML().replace('INVOICE_TITLE_PLACEHOLDER','Packing List') +
+      '<table class="doc-table" style="margin-top:10px;">'+
+      '<thead><tr><th style="width:52%;">Description</th><th>Origin</th><th>Net Weight</th><th>Quanity</th></tr></thead>'+
+      '<tbody>'+rows+
+      '<tr class="total-row"><td style="text-align:center;">Total</td><td></td>'+
+      '<td class="num">'+formatWeight(totals.weight)+'</td>'+
+      '<td class="num">'+formatQty(totals.qty)+'</td></tr>'+
+      '</tbody></table>'+
+      '<div class="doc-foot"><div class="left">'+bankBlockHTML()+'</div><div class="right">'+
+        dimsHTML+
+        '<div class="kv2"><span class="k">Gross weight (kg)</span><span class="v">'+(cartonGrossTotal()>0? formatWeight(cartonGrossTotal()):'-')+'</span></div>'+
+        '<div class="kv2"><span class="k">Number of Cartons</span><span class="v">'+draft.cartonCount+'</span></div>'+
+        '<div class="doc-sign">Signature<div class="line"></div></div>'+
+      '</div></div>'+
+      '<div class="doc-thanks">Thank you very much for your business. We\'re looking forward to serving you again.</div>';
+    byId('docPacking').innerHTML = html;
+  }
+  function packingRowHTML(it){
+    var desc = (it.description||'') + (it.code? ' '+it.code : '');
+    return '<tr><td>'+esc(desc)+'</td><td>'+esc(it.origin)+'</td>'+
+      '<td class="num">'+formatWeight(it.netWeight)+'</td>'+
+      '<td class="num">'+formatQty(it.qty)+'</td></tr>';
+  }
+  function dimsText(d){
+    if(!d || (!d.l && !d.w && !d.h)) return '-';
+    return [d.l||'-', d.w||'-', d.h||'-'].join(' × ');
+  }
+
+  function renderSummaryStrip(){
+    var t = computeTotals();
+    byId('sumQty').textContent = formatQty(t.qty);
+    byId('sumWeight').textContent = formatWeight(t.weight);
+    byId('sumAmount').textContent = esc(draft.currency)+' '+formatMoneyPlain(t.amount);
+    byId('sumCartons').textContent = draft.cartonCount;
+  }
+
+  function renderAll(){
+    buildInvoiceDoc();
+    buildPackingDoc();
+    renderSummaryStrip();
+  }
+
+  /* ---------------- tabs ---------------- */
+  document.querySelectorAll('.ptab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.ptab').forEach(function(t){t.classList.remove('active');});
+      tab.classList.add('active');
+      var which = tab.dataset.doc;
+      byId('docInvoice').classList.toggle('tab-active', which==='invoice');
+      byId('docPacking').classList.toggle('tab-active', which==='packing');
+    });
+  });
+
+  /* ---------------- print ----------------
+     Which document(s) print is decided purely by CSS (@media print): by default the
+     currently active tab only, or both when "両方まとめて印刷" is checked (see the
+     body.print-both-mode rule above). This means printing works correctly even via the
+     browser's own Ctrl+P / Cmd+P — the button below is just a convenience that tries to
+     open the dialog automatically; on some hosts a script-triggered print is blocked, in
+     which case the browser's own print command (Ctrl+P / Cmd+P) still works. */
+  byId('chkPrintBoth').addEventListener('change', function(e){
+    document.body.classList.toggle('print-both-mode', e.target.checked);
+  });
+  byId('btnPrintCurrent').addEventListener('click', function(){
+    // In some hosting environments a script-triggered print is silently blocked (no
+    // dialog, no error), so always surface the reliable fallback rather than assuming
+    // window.print() worked.
+    showToast('開かない場合は Ctrl+P（Mac: ⌘+P）をお試しください');
+    try{ window.print(); }catch(e){}
+  });
+
+  /* ---------------- save history / new ---------------- */
+  byId('btnSaveHistory').addEventListener('click', function(){
+    var rec = JSON.parse(JSON.stringify(draft));
+    rec.recordId = uid();
+    rec.savedAt = new Date().toISOString();
+    history.unshift(rec);
+    persistMasterData();
+    var flash = byId('saveFlash');
+    flash.classList.add('show');
+    setTimeout(function(){ flash.classList.remove('show'); }, 1800);
+  });
+
+  byId('btnNew').addEventListener('click', function(){
+    showConfirm('現在の内容を破棄して新しいインボイスを作成しますか？（保存していない変更は失われます）', function(){
+      draft = freshDraft();
+      saveDraft();
+      fillFormFromDraft();
+      showToast('新規作成しました');
+    });
+  });
+
+  /* ---------------- modal generic ---------------- */
+  function openModal(id){ byId(id).classList.add('open'); }
+  function closeModal(el){ el.classList.remove('open'); }
+  document.querySelectorAll('.modal-overlay').forEach(function(ov){
+    ov.addEventListener('click', function(e){ if(e.target===ov) closeModal(ov); });
+    ov.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click', function(){ closeModal(ov); }); });
+  });
+
+  /* ---------------- confirm / alert (replacement for window.confirm/alert) ---------------- */
+  function showConfirm(message, onYes, opts){
+    opts = opts || {};
+    var overlay = byId('modalConfirm');
+    var okBtn = byId('confirmOkBtn');
+    var cancelBtn = byId('confirmCancelBtn');
+    byId('confirmMessage').textContent = message;
+    okBtn.textContent = opts.okText || 'OK';
+    cancelBtn.style.display = opts.okOnly ? 'none' : '';
+    overlay.classList.add('open');
+    function cleanup(){
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.classList.remove('open');
+    }
+    function onOk(){ cleanup(); if(onYes) onYes(); }
+    function onCancel(){ cleanup(); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  }
+  function showAlert(message){ showConfirm(message, null, {okOnly:true}); }
+
+  /* ---------------- settings modal ---------------- */
+  byId('btnSettings').addEventListener('click', function(){
+    byId('s-shipname').value = settings.shipper.name;
+    byId('s-shipaddr').value = settings.shipper.address;
+    byId('s-shiptel').value = settings.shipper.tel;
+    byId('s-currency').value = settings.currency;
+    byId('s-prefix').value = settings.invoicePrefix;
+    byId('s-payterms').value = settings.paymentTerms;
+    byId('s-bankname').value = settings.bank.name;
+    byId('s-bankbranch').value = settings.bank.branch;
+    byId('s-bankswift').value = settings.bank.swift;
+    byId('s-banktype').value = settings.bank.acctType;
+    byId('s-bankno').value = settings.bank.acctNumber;
+    byId('s-bankacctname').value = settings.bank.acctName;
+    byId('s-banknote').value = settings.bank.note;
+    openModal('modalSettings');
+  });
+  byId('btnSettingsSave').addEventListener('click', function(){
+    settings.shipper = {name:byId('s-shipname').value, address:byId('s-shipaddr').value, tel:byId('s-shiptel').value};
+    settings.currency = byId('s-currency').value || 'JPY';
+    settings.invoicePrefix = byId('s-prefix').value || 'KNTK';
+    settings.paymentTerms = byId('s-payterms').value;
+    settings.bank = {
+      name:byId('s-bankname').value, branch:byId('s-bankbranch').value, swift:byId('s-bankswift').value,
+      acctType:byId('s-banktype').value, acctNumber:byId('s-bankno').value, acctName:byId('s-bankacctname').value,
+      note:byId('s-banknote').value
+    };
+    persistMasterData();
+    closeModal(byId('modalSettings'));
+    showToast('設定を保存しました（次回の新規作成から適用されます）');
+  });
+
+  /* ---------------- product master modal ---------------- */
+  function renderProductList(){
+    var wrap = byId('productList');
+    var countEl = byId('productCount');
+    if(countEl) countEl.textContent = products.length ? '('+products.length+'件)' : '';
+    if(!products.length){ wrap.innerHTML = '<div class="empty-note">登録された商品がありません</div>'; return; }
+    wrap.innerHTML = sortedProducts().map(function(p){
+      return '<div class="mini-row product" data-id="'+p.id+'">'+
+        '<input type="text" data-f="description" value="'+escAttr(p.description)+'" placeholder="品名">'+
+        '<input type="text" data-f="code" class="mono" value="'+escAttr(p.code)+'" placeholder="型番/JAN">'+
+        '<input type="text" data-f="origin" list="originList" value="'+escAttr(p.origin)+'" placeholder="原産国">'+
+        '<input type="number" step="0.001" data-f="netWeight" class="mono" value="'+esc(p.netWeight)+'" placeholder="重量">'+
+        '<input type="number" step="1" data-f="unitPrice" class="mono" value="'+esc(p.unitPrice)+'" placeholder="単価">'+
+        '<button class="row-del" data-del-product>✕</button>'+
+      '</div>';
+    }).join('');
+  }
+  byId('btnProductManage').addEventListener('click', function(){ renderProductList(); openModal('modalProducts'); });
+  byId('productList').addEventListener('input', function(e){
+    var row = e.target.closest('.mini-row'); if(!row) return;
+    var p = products.find(function(x){return x.id===row.dataset.id;});
+    if(!p) return;
+    var f = e.target.dataset.f;
+    p[f] = (f==='netWeight'||f==='unitPrice') ? (e.target.value===''?'':parseFloat(e.target.value)) : e.target.value;
+    persistMasterData();
+    renderProductOptions();
+  });
+  byId('productList').addEventListener('click', function(e){
+    if(!e.target.closest('[data-del-product]')) return;
+    var row = e.target.closest('.mini-row');
+    products = products.filter(function(x){return x.id!==row.dataset.id;});
+    persistMasterData();
+    renderProductList();
+    renderProductOptions();
+  });
+  byId('btnAddProductRow').addEventListener('click', function(){
+    products.push({id:uid(), description:"", code:"", origin:"", netWeight:"", unitPrice:""});
+    persistMasterData();
+    renderProductList();
+    renderProductOptions();
+  });
+  byId('btnProductsClose').addEventListener('click', function(){
+    products = products.filter(function(p){ return p.description && p.description.trim(); });
+    persistMasterData();
+    renderProductList();
+    renderProductOptions();
+    closeModal(byId('modalProducts'));
+  });
+
+  /* ---------------- consignee book modal ---------------- */
+  function renderConsigneeList(){
+    var wrap = byId('consigneeList');
+    if(!consignees.length){ wrap.innerHTML = '<div class="empty-note">登録された取引先がありません</div>'; return; }
+    wrap.innerHTML = consignees.map(function(c){
+      return '<div class="mini-row consignee" data-id="'+c.id+'">'+
+        '<input type="text" data-f="name" value="'+escAttr(c.name)+'" placeholder="会社名">'+
+        '<textarea data-f="address" placeholder="住所" rows="2">'+esc(c.address)+'</textarea>'+
+        '<input type="text" data-f="tel" value="'+escAttr(c.tel)+'" placeholder="TEL">'+
+        '<button class="row-del" data-del-consignee>✕</button>'+
+      '</div>';
+    }).join('');
+  }
+  byId('btnConsigneeManage').addEventListener('click', function(){ renderConsigneeList(); openModal('modalConsignees'); });
+  byId('consigneeList').addEventListener('input', function(e){
+    var row = e.target.closest('.mini-row'); if(!row) return;
+    var c = consignees.find(function(x){return x.id===row.dataset.id;});
+    if(!c) return;
+    c[e.target.dataset.f] = e.target.value;
+    persistMasterData();
+    renderConsigneeOptions();
+  });
+  byId('consigneeList').addEventListener('click', function(e){
+    if(!e.target.closest('[data-del-consignee]')) return;
+    var row = e.target.closest('.mini-row');
+    consignees = consignees.filter(function(x){return x.id!==row.dataset.id;});
+    persistMasterData();
+    renderConsigneeList();
+    renderConsigneeOptions();
+  });
+  byId('btnAddConsigneeRow').addEventListener('click', function(){
+    consignees.push({id:uid(), name:"", address:"", tel:""});
+    persistMasterData();
+    renderConsigneeList();
+    renderConsigneeOptions();
+  });
+  byId('btnConsigneesClose').addEventListener('click', function(){
+    consignees = consignees.filter(function(c){ return c.name && c.name.trim(); });
+    persistMasterData();
+    renderConsigneeList();
+    renderConsigneeOptions();
+    closeModal(byId('modalConsignees'));
+  });
+
+  /* ---------------- history modal ---------------- */
+  function renderHistoryList(){
+    var wrap = byId('historyList');
+    if(!history.length){ wrap.innerHTML = '<div class="empty-note">保存された履歴がありません</div>'; return; }
+    wrap.innerHTML = history.map(function(h){
+      var t = 0;
+      (h.items||[]).forEach(function(it){ t += (parseFloat(it.qty)||0)*(parseFloat(it.unitPrice)||0); });
+      return '<div class="mini-row history" data-id="'+h.recordId+'">'+
+        '<div class="hist-info"><b>'+esc(h.invoiceNo)+'</b><br>'+esc(formatDisplayDate(h.date))+'</div>'+
+        '<div class="hist-info">'+esc(h.consignee && h.consignee.name || '(宛先未入力)')+'<br>'+esc(h.currency)+' '+formatMoneyPlain(t)+'</div>'+
+        '<div class="hist-actions">'+
+          '<button class="btn btn-ghost btn-sm" data-open>開く</button>'+
+          '<button class="btn btn-ghost btn-sm" data-dup>複製</button>'+
+          '<button class="btn btn-danger btn-sm" data-del-hist>削除</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+  byId('btnHistory').addEventListener('click', function(){ renderHistoryList(); openModal('modalHistory'); });
+  byId('historyList').addEventListener('click', function(e){
+    var row = e.target.closest('.mini-row'); if(!row) return;
+    var rec = history.find(function(h){return h.recordId===row.dataset.id;});
+    if(!rec) return;
+    if(e.target.closest('[data-open]')){
+      draft = JSON.parse(JSON.stringify(rec));
+      draft.invoiceNoManual = true;
+      saveDraft();
+      fillFormFromDraft();
+      closeModal(byId('modalHistory'));
+      showToast('履歴を読み込みました');
+    } else if(e.target.closest('[data-dup]')){
+      var d2 = JSON.parse(JSON.stringify(rec));
+      var today = new Date().toISOString().slice(0,10);
+      d2.date = today;
+      d2.invoiceNoManual = false;
+      d2.invoiceNo = buildInvoiceNo(today, nextSeqForDate(today));
+      delete d2.recordId; delete d2.savedAt;
+      draft = d2;
+      saveDraft();
+      fillFormFromDraft();
+      closeModal(byId('modalHistory'));
+      showToast('複製して新規作成しました');
+    } else if(e.target.closest('[data-del-hist]')){
+      showConfirm('この履歴を削除しますか？', function(){
+        history = history.filter(function(h){return h.recordId!==rec.recordId;});
+        persistMasterData();
+        renderHistoryList();
+      });
+    }
+  });
+
+  /* ---------------- backup modal ---------------- */
+  function buildBackupPayload(){
+    return {settings:settings, products:products, consignees:consignees, history:history, exportedAt:new Date().toISOString()};
+  }
+  function backupFileName(){
+    var d = new Date();
+    function pad(n){ return (n<10?'0':'')+n; }
+    return 'kntk-export-desk-backup-' + d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
+  }
+  function refreshBackupFileLink(){
+    var link = byId('backupFileLink');
+    if(!link) return;
+    var json = JSON.stringify(buildBackupPayload(), null, 2);
+    // A data: URI keeps this a genuine, manually-clickable link (not a script-simulated
+    // click), so it still works if the environment blocks script-triggered downloads —
+    // the same reason Ctrl+P is kept as the reliable fallback for printing.
+    link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+    link.download = backupFileName();
+  }
+  function markBackupDone(){
+    saveLS(LS_LAST_BACKUP, Date.now());
+    checkBackupReminder();
+  }
+  byId('btnBackup').addEventListener('click', function(){
+    var payload = buildBackupPayload();
+    byId('backupExport').value = JSON.stringify(payload);
+    byId('backupImport').value = '';
+    byId('backupFileInput').value = '';
+    refreshBackupFileLink();
+    openModal('modalBackup');
+  });
+  byId('btnDownloadBackup').addEventListener('click', function(){
+    try{
+      var json = JSON.stringify(buildBackupPayload(), null, 2);
+      var blob = new Blob([json], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = backupFileName();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      showToast('ダウンロードしました（保存できない場合は下のリンクをお試しください）');
+      markBackupDone();
+    }catch(e){
+      showToast('自動ダウンロードに失敗しました。下のリンクを右クリックして保存してください');
+    }
+  });
+  byId('btnCopyBackup').addEventListener('click', function(){
+    var ta = byId('backupExport');
+    ta.select();
+    try{
+      navigator.clipboard.writeText(ta.value).then(function(){ showToast('コピーしました'); markBackupDone(); }).catch(function(){
+        document.execCommand('copy'); showToast('コピーしました'); markBackupDone();
+      });
+    }catch(e){
+      try{ document.execCommand('copy'); showToast('コピーしました'); markBackupDone(); }catch(e2){ showToast('コピーに失敗しました。手動で選択してコピーしてください'); }
+    }
+  });
+  byId('btnBannerBackupNow').addEventListener('click', function(){
+    byId('btnBackup').click();
+  });
+  byId('btnBannerDismiss').addEventListener('click', function(){
+    saveLS(LS_BACKUP_SNOOZE, Date.now() + BACKUP_SNOOZE_MS);
+    checkBackupReminder();
+  });
+  function restoreFromPayload(data){
+    if(data.settings) settings = data.settings;
+    if(data.products) products = data.products;
+    if(data.consignees) consignees = data.consignees;
+    if(data.history) history = data.history;
+    persistMasterData();
+    renderConsigneeOptions(); renderProductOptions();
+    closeModal(byId('modalBackup'));
+    showToast('復元しました');
+  }
+  byId('btnRestoreBackup').addEventListener('click', function(){
+    var raw = byId('backupImport').value.trim();
+    if(!raw) return;
+    try{
+      restoreFromPayload(JSON.parse(raw));
+    }catch(e){
+      showAlert('データの読み込みに失敗しました。内容を確認してください。');
+    }
+  });
+  byId('backupFileInput').addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        restoreFromPayload(JSON.parse(reader.result));
+      }catch(err){
+        showAlert('ファイルの読み込みに失敗しました。正しいバックアップファイルか確認してください。');
+      }
+      e.target.value = '';
+    };
+    reader.onerror = function(){
+      showAlert('ファイルの読み込み中にエラーが発生しました。');
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  // Last-resort safety net: if a backup is overdue and there is meaningful data,
+  // warn on the way out (tab close / reload / navigating away). Browsers show their
+  // own generic wording here, not this string, but this is the moment closest to
+  // "closing the laptop" or "reloading" that a script can still intervene in.
+  window.addEventListener('beforeunload', function(e){
+    if(!hasMeaningfulData()) return;
+    var now = Date.now();
+    var snoozeUntil = loadLS(LS_BACKUP_SNOOZE, 0);
+    if(snoozeUntil && now < snoozeUntil) return;
+    var lastBackup = loadLS(LS_LAST_BACKUP, 0);
+    var needsBackup = !lastBackup || (now - lastBackup) > BACKUP_REMINDER_MS;
+    if(needsBackup){
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  /* ---------------- init ---------------- */
+  fillFormFromDraft();
+  checkBackupReminder();
+
+})();
+</script>
+</body></html>

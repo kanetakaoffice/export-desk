@@ -110,6 +110,12 @@
   .brand-name{font-weight:700;font-size:16px;letter-spacing:.01em;white-space:nowrap;}
   .brand-sub{font-size:11.5px;color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .topbar-actions{display:flex;gap:8px;flex:none;}
+  @media (max-width:640px){
+    .topbar{flex-wrap:wrap;row-gap:10px;padding:12px 14px;}
+    .brand-sub{display:none;}
+    .topbar-actions{flex:1 1 100%;justify-content:flex-start;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .topbar-actions .btn{padding:6px 10px;font-size:12px;flex:none;}
+  }
 
   .backup-banner{
     display:flex;align-items:center;gap:14px;flex-wrap:wrap;
@@ -1973,7 +1979,7 @@
     refreshBackupFileLink();
     openModal('modalBackup');
   });
-  byId('btnDownloadBackup').addEventListener('click', function(){
+  function downloadBackupFile(showModalLink){
     try{
       var json = JSON.stringify(buildBackupPayload(), null, 2);
       var blob = new Blob([json], {type:'application/json'});
@@ -1985,11 +1991,20 @@
       a.click();
       document.body.removeChild(a);
       setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
-      showToast('ダウンロードしました（保存できない場合は下のリンクをお試しください）');
+      showToast('バックアップをダウンロードしました');
       markBackupDone();
+      return true;
     }catch(e){
-      showToast('自動ダウンロードに失敗しました。下のリンクを右クリックして保存してください');
+      if(showModalLink){
+        showToast('自動ダウンロードに失敗しました。下のリンクを右クリックして保存してください');
+      }else{
+        showToast('自動ダウンロードに失敗しました。「バックアップ」から保存してください');
+      }
+      return false;
     }
+  }
+  byId('btnDownloadBackup').addEventListener('click', function(){
+    downloadBackupFile(true);
   });
   byId('btnCopyBackup').addEventListener('click', function(){
     var ta = byId('backupExport');
@@ -2003,7 +2018,7 @@
     }
   });
   byId('btnBannerBackupNow').addEventListener('click', function(){
-    byId('btnBackup').click();
+    downloadBackupFile(false);
   });
   byId('btnBannerDismiss').addEventListener('click', function(){
     saveLS(LS_BACKUP_SNOOZE, Date.now() + BACKUP_SNOOZE_MS);

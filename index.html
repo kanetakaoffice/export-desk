@@ -330,10 +330,6 @@
     background-size:auto;
   }
   #printArea{width:100%;max-width:800px;}
-  /* Dedicated page-break marker for "print both" — see the @media print rule below
-     for why the break lives on its own empty element instead of on a document box.
-     Never visible on screen. */
-  .print-page-break{display:none;}
   /* the document preview always renders as a fixed white paper page, independent of the
      app theme, since it represents an actual printed sheet — like a doc-preview pane */
   .doc{display:none;background:#ffffff;color:#1a1a1a;padding:26px 30px;border:1px solid var(--border-strong);
@@ -427,7 +423,12 @@
     *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important;}
     body{background:#fff !important;}
     .topbar,.backup-banner,.form-panel,.preview-tabs,.preview-actions,.modal-overlay,.toast{display:none !important;}
-    .workspace{display:block !important;max-width:none;}
+    /* Safari/WebKit's print engine fails to paginate content across multiple pages when an
+       ancestor is a flex or grid container (it tends to squeeze everything onto one page
+       instead of breaking at page-break-after) — Chrome is more forgiving about this, which
+       is why this only showed up in Safari. Force every ancestor down to #printArea back to
+       plain block layout for print so page breaks between .doc elements are respected. */
+    .app,.workspace,.preview-panel{display:block !important;min-height:0 !important;max-width:none;}
     .preview-panel{position:static !important;height:auto !important;background:#fff !important;}
     .preview-scroll{overflow:visible !important;padding:0 !important;background:#fff !important;display:block !important;}
     .app,.workspace{background:#fff !important;}
@@ -435,27 +436,10 @@
     /* By default, print only the document whose tab is currently selected on screen —
        this way the OS/browser print command (Ctrl+P / Cmd+P) does the right thing even
        when a script-triggered print (window.print()) is blocked by the page's sandbox. */
-    .doc{display:none !important;box-shadow:none !important;border:1px solid #000 !important;margin:0 auto;}
+    .doc{display:none !important;box-shadow:none !important;border:1px solid #000 !important;page-break-after:always;margin:0 auto;}
     .doc.tab-active{display:block !important;}
     body.print-both-mode .doc{display:block !important;}
-    /* When printing both documents, the page break between them is carried by its own
-       dedicated, empty marker element rather than by a forced break-property on the
-       invoice box itself. Putting the break on a plain, zero-height element — instead
-       of on a content box whose own height already varies and can itself run onto a
-       second page — has been the reliable fix for real-world cases (observed on
-       Safari/macOS "Print to PDF") where forcing a break on the content box caused the
-       page break calculation to go wrong and the following document to be dropped
-       from the output entirely instead of starting on its own page. */
-    .print-page-break{display:none;}
-    body.print-both-mode .print-page-break{
-      display:block !important;height:0;overflow:hidden;
-      break-before:auto;break-after:page;page-break-after:always;
-    }
-    /* Keep the bank/remittance box and the closing thank-you line attached to
-       whatever page the item table ends on, instead of letting just one of them spill
-       onto a near-empty page by itself. */
-    .doc-foot{break-inside:avoid;page-break-inside:avoid;}
-    .doc-thanks{break-before:avoid;page-break-before:avoid;}
+    .doc:last-of-type{page-break-after:auto;}
     @page{size:A4;margin:12mm;}
   }
 </style></head><body>
@@ -649,7 +633,6 @@
       <div class="preview-scroll">
         <div id="printArea">
           <div class="doc tab-active" id="docInvoice"></div>
-          <div class="print-page-break" id="printPageBreak"></div>
           <div class="doc" id="docPacking"></div>
         </div>
       </div>
@@ -940,63 +923,18 @@
     }
   })();
 
-  // Whether this browser already had its own settings before we look at the cloud —
-  // used below to decide whether it's safe to adopt the cloud's settings on load
-  // (see the comment beside mergeById for why settings gets different treatment
-  // than the list-shaped collections).
-  var localSettingsExisted = !!loadLS(LS_SETTINGS, null);
-
-  // Union-merge two lists by an id field. Both product/consignee edits and history
-  // entries are "create, edit in place by id, or delete" — never reordered or
-  // restructured — so "keep whichever copy of each id we've seen" is a safe way to
-  // combine a remote copy with our local copy without silently discarding either
-  // side's additions. When the same id exists in both, the LOCAL copy wins, since
-  // local is whatever this tab/device is actively editing right now.
-  // excludeIds lets a delete-in-progress drop an id even though it may still be
-  // sitting in the copy we just fetched from the cloud, so a deletion isn't
-  // silently undone by the merge itself.
-  function mergeById(remoteList, localList, idField, excludeIds){
-    var exclude = {};
-    (excludeIds || []).forEach(function(id){ exclude[id] = true; });
-    var byKey = {};
-    (remoteList || []).forEach(function(item){
-      var k = item && item[idField];
-      if(k && !exclude[k]) byKey[k] = item;
-    });
-    (localList || []).forEach(function(item){
-      var k = item && item[idField];
-      if(k && !exclude[k]) byKey[k] = item;
-    });
-    var merged = [];
-    for(var k in byKey){ merged.push(byKey[k]); }
-    return merged;
-  }
-
-  // History additionally gets sorted newest-first after merging, since the on-screen
-  // list and invoice-numbering logic expect that order.
-  function mergeHistoryArrays(remoteList, localList, excludeIds){
-    var merged = mergeById(remoteList, localList, 'recordId', excludeIds);
-    merged.sort(function(a, b){ return (b.savedAt || '').localeCompare(a.savedAt || ''); });
-    return merged;
-  }
-
-  // On load, MERGE with whatever is already in the cloud rather than blindly
-  // replacing our local copy with it — the cloud may still hold an older snapshot
-  // (e.g. a previous tab closed before its last save finished), and overwriting
-  // local with that stale snapshot is exactly what made newly-added products
-  // disappear. Settings is a single object rather than a list, so instead of
-  // merging field-by-field we only adopt the cloud's settings when this browser
-  // doesn't have its own yet (a brand-new device) — an existing local settings
-  // edit is never silently clobbered by an older cloud copy.
+  // On load, adopt whatever is already in the cloud as the source of truth —
+  // it reflects saves made from ANY computer, not just this one. If nothing
+  // is there yet, seed it from whatever this computer currently holds.
   fbReady.then(function(ref){
     if(!ref) return;
     return ref.once('value').then(function(snap){
       var remote = snap.val();
       if(remote && typeof remote === 'object'){
-        if(remote.settings && !localSettingsExisted) settings = remote.settings;
-        products = mergeById(remote.products, products, 'id');
-        consignees = mergeById(remote.consignees, consignees, 'id');
-        history = mergeHistoryArrays(remote.history, history);
+        if(remote.settings) settings = remote.settings;
+        if(remote.products) products = remote.products;
+        if(remote.consignees) consignees = remote.consignees;
+        if(remote.history) history = remote.history;
         saveLS(LS_SETTINGS, settings);
         saveLS(LS_PRODUCTS, products);
         saveLS(LS_CONSIGNEES, consignees);
@@ -1004,10 +942,6 @@
         renderProductOptions();
         renderConsigneeOptions();
         checkBackupReminder();
-        // If merging pulled in anything this browser didn't have yet (or didn't have
-        // for settings), write the merged/combined result back so the cloud copy is
-        // brought up to date too, instead of waiting for the next explicit save.
-        writeToFirebase();
       } else {
         persistMasterData();
       }
@@ -1015,6 +949,23 @@
       if(window.console) console.warn('firebase initial read failed', err);
     });
   });
+
+  // Union-merge two history arrays by recordId (history entries are never
+  // edited in place, only created or deleted, so "keep whichever copy is
+  // present" is safe). excludeIds lets a delete-in-progress drop an id even
+  // though it may still be sitting in the copy we just fetched from the
+  // cloud, so a deletion isn't silently undone by the merge itself.
+  function mergeHistoryArrays(remoteList, localList, excludeIds){
+    var exclude = {};
+    (excludeIds || []).forEach(function(id){ exclude[id] = true; });
+    var byId = {};
+    (remoteList || []).forEach(function(h){ if(h && h.recordId && !exclude[h.recordId]) byId[h.recordId] = h; });
+    (localList || []).forEach(function(h){ if(h && h.recordId && !exclude[h.recordId]) byId[h.recordId] = h; });
+    var merged = [];
+    for(var k in byId){ merged.push(byId[k]); }
+    merged.sort(function(a, b){ return (b.savedAt || '').localeCompare(a.savedAt || ''); });
+    return merged;
+  }
 
   function writeToFirebase(){
     if(!fbRef) return;
@@ -1024,16 +975,9 @@
     });
   }
 
-  // opts: {deletedProductIds, deletedConsigneeIds, deletedHistoryIds, force}
-  // The three deletedXIds lists tell the merge below "these ids are being removed by
-  // THIS call", so they stay removed even though the cloud copy we fetch a moment
-  // later may still have them (it hasn't heard about the deletion yet).
-  // force:true skips the merge-fetch entirely and overwrites the cloud copy outright
-  // — used only when restoring from a backup file, where the whole point is that the
-  // imported snapshot should become authoritative rather than being merged with
-  // whatever (possibly the very data being fixed) is currently in the cloud.
-  function persistMasterData(opts){
-    opts = opts || {};
+  // deletedHistoryIds: recordIds being removed by THIS call, so they stay
+  // removed even if another device's copy (fetched just below) still has them.
+  function persistMasterData(deletedHistoryIds){
     saveLS(LS_SETTINGS, settings);
     saveLS(LS_PRODUCTS, products);
     saveLS(LS_CONSIGNEES, consignees);
@@ -1049,32 +993,19 @@
       });
     }
     if(fbRef){
-      if(opts.force){
+      // A save from one tab/device must never blow away history entries added
+      // from another tab/device since this page was opened — so pull the
+      // latest cloud copy of history and merge it in immediately before
+      // writing, instead of overwriting the cloud copy with whatever this
+      // page happens to be holding in memory.
+      fbRef.child('history').once('value').then(function(snap){
+        history = mergeHistoryArrays(snap.val(), history, deletedHistoryIds);
+        saveLS(LS_HISTORY, history);
         writeToFirebase();
-      } else {
-        // A save from one tab/device must never blow away products, consignees or
-        // history added from another tab/device since this page was opened — so pull
-        // the latest cloud copy and merge it in (by id) immediately before writing,
-        // instead of overwriting the cloud copy with whatever this page happens to be
-        // holding in memory right now.
-        fbRef.once('value').then(function(snap){
-          var remote = snap.val() || {};
-          products = mergeById(remote.products, products, 'id', opts.deletedProductIds);
-          consignees = mergeById(remote.consignees, consignees, 'id', opts.deletedConsigneeIds);
-          history = mergeHistoryArrays(remote.history, history, opts.deletedHistoryIds);
-          saveLS(LS_PRODUCTS, products);
-          saveLS(LS_CONSIGNEES, consignees);
-          saveLS(LS_HISTORY, history);
-          renderProductOptions();
-          renderConsigneeOptions();
-          if(byId('modalProducts') && byId('modalProducts').classList.contains('open')) renderProductList();
-          if(byId('modalConsignees') && byId('modalConsignees').classList.contains('open')) renderConsigneeList();
-          writeToFirebase();
-        }).catch(function(err){
-          if(window.console) console.warn('firebase fetch before save failed', err);
-          writeToFirebase();
-        });
-      }
+      }).catch(function(err){
+        if(window.console) console.warn('firebase history fetch before save failed', err);
+        writeToFirebase();
+      });
     }
     checkBackupReminder();
   }
@@ -1101,10 +1032,10 @@
     banner.classList.toggle('hidden', !needsBackup);
   }
 
-  // On load, once the capability (if any) resolves, merge with the durable store as
-  // an additional source of truth for master data — it reflects saves made from ANY
-  // browser, not just this one. If no store exists yet, seed it from whatever this
-  // browser currently holds, so the very first save establishes the durable copy.
+  // On load, once the capability (if any) resolves, adopt the durable store as the
+  // source of truth for master data — it reflects saves made from ANY browser, not
+  // just this one. If no store exists yet, seed it from whatever this browser
+  // currently holds, so the very first save establishes the durable copy.
   artifactCapReady.then(function(cap){
     if(!cap) return;
     return fetch('data/store.json', {cache:'no-store'}).then(function(res){
@@ -1112,10 +1043,10 @@
       return res.json();
     }).then(function(remote){
       if(remote && typeof remote === 'object'){
-        if(remote.settings && !localSettingsExisted) settings = remote.settings;
-        products = mergeById(remote.products, products, 'id');
-        consignees = mergeById(remote.consignees, consignees, 'id');
-        history = mergeHistoryArrays(remote.history, history);
+        if(remote.settings) settings = remote.settings;
+        if(remote.products) products = remote.products;
+        if(remote.consignees) consignees = remote.consignees;
+        if(remote.history) history = remote.history;
         saveLS(LS_SETTINGS, settings);
         saveLS(LS_PRODUCTS, products);
         saveLS(LS_CONSIGNEES, consignees);
@@ -1944,9 +1875,8 @@
   byId('productList').addEventListener('click', function(e){
     if(!e.target.closest('[data-del-product]')) return;
     var row = e.target.closest('.mini-row');
-    var delId = row.dataset.id;
-    products = products.filter(function(x){return x.id!==delId;});
-    persistMasterData({deletedProductIds:[delId]});
+    products = products.filter(function(x){return x.id!==row.dataset.id;});
+    persistMasterData();
     renderProductList();
     renderProductOptions();
   });
@@ -1957,9 +1887,8 @@
     renderProductOptions();
   });
   byId('btnProductsClose').addEventListener('click', function(){
-    var removedIds = products.filter(function(p){ return !p.description || !p.description.trim(); }).map(function(p){ return p.id; });
     products = products.filter(function(p){ return p.description && p.description.trim(); });
-    persistMasterData({deletedProductIds:removedIds});
+    persistMasterData();
     renderProductList();
     renderProductOptions();
     closeModal(byId('modalProducts'));
@@ -1990,9 +1919,8 @@
   byId('consigneeList').addEventListener('click', function(e){
     if(!e.target.closest('[data-del-consignee]')) return;
     var row = e.target.closest('.mini-row');
-    var delId = row.dataset.id;
-    consignees = consignees.filter(function(x){return x.id!==delId;});
-    persistMasterData({deletedConsigneeIds:[delId]});
+    consignees = consignees.filter(function(x){return x.id!==row.dataset.id;});
+    persistMasterData();
     renderConsigneeList();
     renderConsigneeOptions();
   });
@@ -2003,9 +1931,8 @@
     renderConsigneeOptions();
   });
   byId('btnConsigneesClose').addEventListener('click', function(){
-    var removedIds = consignees.filter(function(c){ return !c.name || !c.name.trim(); }).map(function(c){ return c.id; });
     consignees = consignees.filter(function(c){ return c.name && c.name.trim(); });
-    persistMasterData({deletedConsigneeIds:removedIds});
+    persistMasterData();
     renderConsigneeList();
     renderConsigneeOptions();
     closeModal(byId('modalConsignees'));
@@ -2056,7 +1983,7 @@
     } else if(e.target.closest('[data-del-hist]')){
       showConfirm('この履歴を削除しますか？', function(){
         history = history.filter(function(h){return h.recordId!==rec.recordId;});
-        persistMasterData({deletedHistoryIds:[rec.recordId]});
+        persistMasterData([rec.recordId]);
         renderHistoryList();
       });
     }
@@ -2143,11 +2070,7 @@
     if(data.products) products = data.products;
     if(data.consignees) consignees = data.consignees;
     if(data.history) history = data.history;
-    // A restore is an explicit "make this snapshot the truth" action — merging it
-    // with whatever is currently in the cloud would defeat the purpose if she's
-    // restoring specifically because the current (cloud) data is wrong, so this
-    // writes the imported snapshot straight through instead of merging it.
-    persistMasterData({force:true});
+    persistMasterData();
     renderConsigneeOptions(); renderProductOptions();
     closeModal(byId('modalBackup'));
     showToast('復元しました');

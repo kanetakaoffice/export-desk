@@ -431,10 +431,24 @@
     /* By default, print only the document whose tab is currently selected on screen —
        this way the OS/browser print command (Ctrl+P / Cmd+P) does the right thing even
        when a script-triggered print (window.print()) is blocked by the page's sandbox. */
-    .doc{display:none !important;box-shadow:none !important;border:1px solid #000 !important;page-break-after:always;margin:0 auto;}
+    .doc{display:none !important;box-shadow:none !important;border:1px solid #000 !important;margin:0 auto;}
     .doc.tab-active{display:block !important;}
     body.print-both-mode .doc{display:block !important;}
-    .doc:last-of-type{page-break-after:auto;}
+    /* When printing both documents, start the SECOND one on its own fresh page rather
+       than forcing a break at the end of the first. The invoice's own content can run
+       long enough to spill onto a second page by itself (more items/cartons than fit
+       on one sheet) — forcing the break "after" an element whose own height already
+       varies has been observed, in real-world PDF exports, to sometimes drop the
+       following document instead of giving it a page of its own. Declaring the break
+       "before" the next document is the more reliable direction for the same request
+       and does not depend on how many pages the first document happened to need. */
+    body.print-both-mode .doc + .doc{break-before:page;page-break-before:always;}
+    /* Keep the bank/remittance box and the closing thank-you line attached to
+       whatever page the item table ends on, instead of letting just one of them spill
+       onto a near-empty page by itself — both because it looks better, and because a
+       lone orphaned line has been the trigger for the drop described above. */
+    .doc-foot{break-inside:avoid;page-break-inside:avoid;}
+    .doc-thanks{break-before:avoid;page-break-before:avoid;}
     @page{size:A4;margin:12mm;}
   }
 </style></head><body>

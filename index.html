@@ -330,6 +330,10 @@
     background-size:auto;
   }
   #printArea{width:100%;max-width:800px;}
+  /* Dedicated page-break marker for "print both" — see the @media print rule below
+     for why the break lives on its own empty element instead of on a document box.
+     Never visible on screen. */
+  .print-page-break{display:none;}
   /* the document preview always renders as a fixed white paper page, independent of the
      app theme, since it represents an actual printed sheet — like a doc-preview pane */
   .doc{display:none;background:#ffffff;color:#1a1a1a;padding:26px 30px;border:1px solid var(--border-strong);
@@ -434,19 +438,22 @@
     .doc{display:none !important;box-shadow:none !important;border:1px solid #000 !important;margin:0 auto;}
     .doc.tab-active{display:block !important;}
     body.print-both-mode .doc{display:block !important;}
-    /* When printing both documents, start the SECOND one on its own fresh page rather
-       than forcing a break at the end of the first. The invoice's own content can run
-       long enough to spill onto a second page by itself (more items/cartons than fit
-       on one sheet) — forcing the break "after" an element whose own height already
-       varies has been observed, in real-world PDF exports, to sometimes drop the
-       following document instead of giving it a page of its own. Declaring the break
-       "before" the next document is the more reliable direction for the same request
-       and does not depend on how many pages the first document happened to need. */
-    body.print-both-mode .doc + .doc{break-before:page;page-break-before:always;}
+    /* When printing both documents, the page break between them is carried by its own
+       dedicated, empty marker element rather than by a forced break-property on the
+       invoice box itself. Putting the break on a plain, zero-height element — instead
+       of on a content box whose own height already varies and can itself run onto a
+       second page — has been the reliable fix for real-world cases (observed on
+       Safari/macOS "Print to PDF") where forcing a break on the content box caused the
+       page break calculation to go wrong and the following document to be dropped
+       from the output entirely instead of starting on its own page. */
+    .print-page-break{display:none;}
+    body.print-both-mode .print-page-break{
+      display:block !important;height:0;overflow:hidden;
+      break-before:auto;break-after:page;page-break-after:always;
+    }
     /* Keep the bank/remittance box and the closing thank-you line attached to
        whatever page the item table ends on, instead of letting just one of them spill
-       onto a near-empty page by itself — both because it looks better, and because a
-       lone orphaned line has been the trigger for the drop described above. */
+       onto a near-empty page by itself. */
     .doc-foot{break-inside:avoid;page-break-inside:avoid;}
     .doc-thanks{break-before:avoid;page-break-before:avoid;}
     @page{size:A4;margin:12mm;}
@@ -642,6 +649,7 @@
       <div class="preview-scroll">
         <div id="printArea">
           <div class="doc tab-active" id="docInvoice"></div>
+          <div class="print-page-break" id="printPageBreak"></div>
           <div class="doc" id="docPacking"></div>
         </div>
       </div>

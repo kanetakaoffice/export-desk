@@ -456,10 +456,20 @@
     /* By default, print only the document whose tab is currently selected on screen —
        this way the OS/browser print command (Ctrl+P / Cmd+P) does the right thing even
        when a script-triggered print (window.print()) is blocked by the page's sandbox. */
-    .doc{display:none !important;box-shadow:none !important;border:1px solid #000 !important;page-break-after:always;margin:0 auto;}
+    .doc{display:none !important;box-shadow:none !important;border:1px solid #000 !important;
+      page-break-after:always;break-after:page;margin:0 auto;}
     .doc.tab-active{display:block !important;}
     body.print-both-mode .doc{display:block !important;}
-    .doc:last-of-type{page-break-after:auto;}
+    /* Safari has shown a style-invalidation bug where toggling a class on `body` (two
+       ancestors up from .doc) does not reliably re-trigger layout for .doc's print display
+       at the moment window.print() runs, even though the body.print-both-mode rule above
+       is correct on paper. As a belt-and-suspenders fix, the JS also toggles this class
+       directly on the .doc elements themselves right before printing, so showing them
+       doesn't depend on that cross-ancestor cascade at all. */
+    .doc.force-show{display:block !important;}
+    /* Target the packing list by id rather than :last-of-type, so there is no ambiguity
+       about which element this applies to across browsers. */
+    #docPacking{page-break-after:auto !important;break-after:auto !important;}
     @page{size:A4;margin:12mm;}
   }
 </style></head><body>
@@ -1768,16 +1778,22 @@
   });
 
   /* ---------------- print ----------------
-     Which document(s) print is decided purely by CSS (@media print): by default the
-     currently active tab only, or both when "両方まとめて印刷" is checked (see the
-     body.print-both-mode rule above). This means printing works correctly even via the
-     browser's own Ctrl+P / Cmd+P — the button below is just a convenience that tries to
-     open the dialog automatically; on some hosts a script-triggered print is blocked, in
-     which case the browser's own print command (Ctrl+P / Cmd+P) still works. */
-  byId('chkPrintBoth').addEventListener('change', function(e){
-    document.body.classList.toggle('print-both-mode', e.target.checked);
-  });
+     Which document(s) print is decided by CSS (@media print): by default the currently
+     active tab only, or both when "両方まとめて印刷" is checked. Safari has shown a bug
+     where toggling a class on `body` alone doesn't reliably show both .doc elements at
+     print time (the body.print-both-mode CSS rule is kept as a fallback for Ctrl+P/Cmd+P),
+     so applyPrintBothState() also sets a class directly on the two .doc elements
+     themselves — both when the checkbox changes, and again right before window.print()
+     is triggered, so it can't be left stale by any ordering quirk in a given browser. */
+  function applyPrintBothState(){
+    var both = byId('chkPrintBoth').checked;
+    document.body.classList.toggle('print-both-mode', both);
+    byId('docInvoice').classList.toggle('force-show', both);
+    byId('docPacking').classList.toggle('force-show', both);
+  }
+  byId('chkPrintBoth').addEventListener('change', applyPrintBothState);
   byId('btnPrintCurrent').addEventListener('click', function(){
+    applyPrintBothState();
     // In some hosting environments a script-triggered print is silently blocked (no
     // dialog, no error), so always surface the reliable fallback rather than assuming
     // window.print() worked.

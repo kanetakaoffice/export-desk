@@ -441,7 +441,8 @@
        shading, carton-separator rows, etc. print the same as they look on screen. */
     *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important;}
     body{background:#fff !important;}
-    .topbar,.backup-banner,.form-panel,.preview-tabs,.preview-actions,.modal-overlay,.toast{display:none !important;}
+    .topbar,.backup-banner,.form-panel,.preview-tabs,.preview-actions,.modal-overlay,.toast,
+    #pullRefreshIndicator{display:none !important;}
     /* Safari/WebKit's print engine fails to paginate content across multiple pages when an
        ancestor is a flex or grid container (it tends to squeeze everything onto one page
        instead of breaking at page-break-after) — Chrome is more forgiving about this, which

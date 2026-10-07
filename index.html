@@ -443,6 +443,11 @@
     body{background:#fff !important;}
     .topbar,.backup-banner,.form-panel,.preview-tabs,.preview-actions,.modal-overlay,.toast,
     #pullRefreshIndicator{display:none !important;}
+    /* A single table row that wraps onto 2-3 lines (a long product name/description) can
+       end up sitting right at the page boundary. Safari has shown a bug specifically with
+       tall rows straddling a forced page break — content after that row can go missing.
+       Forbidding a row from splitting across pages avoids the trigger for that case. */
+    .doc-table tr{break-inside:avoid;page-break-inside:avoid;}
     /* Safari/WebKit's print engine fails to paginate content across multiple pages when an
        ancestor is a flex or grid container (it tends to squeeze everything onto one page
        instead of breaking at page-break-after) — Chrome is more forgiving about this, which

@@ -1811,8 +1811,25 @@
     byId('docPacking').classList.toggle('force-show', both);
   }
   byId('chkPrintBoth').addEventListener('change', applyPrintBothState);
+
+  /* Safari has been seen reusing a stale print-pagination calculation from a previous
+     print job in the same tab (observed when the print dialog's 拡大縮小/scale is changed
+     and then reset, and suspected across repeated "両方まとめて印刷" prints in general) —
+     the preview can show fewer pages than the content actually needs, so the dialog saves
+     a truncated PDF. Forcing the print elements through a hide→reflow→show cycle right
+     before window.print() makes WebKit discard whatever cached layout it was holding and
+     rebuild pagination fresh every time, rather than trusting it was already up to date. */
+  function forcePrintReflow(){
+    var targets = [byId('printArea'), byId('docInvoice'), byId('docPacking')].filter(Boolean);
+    targets.forEach(function(el){ el.style.display = 'none'; });
+    void document.body.offsetHeight; // force the style change to apply synchronously
+    targets.forEach(function(el){ el.style.display = ''; });
+    void document.body.offsetHeight;
+  }
+
   byId('btnPrintCurrent').addEventListener('click', function(){
     applyPrintBothState();
+    forcePrintReflow();
     // In some hosting environments a script-triggered print is silently blocked (no
     // dialog, no error), so always surface the reliable fallback rather than assuming
     // window.print() worked.

@@ -354,6 +354,10 @@
   .preview-actions .spacer{flex:1;}
   .print-both-label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-muted);cursor:pointer;user-select:none;}
   .print-both-label input{cursor:pointer;}
+  .print-mode-select{
+    font-size:12px;color:var(--ink-muted);background:var(--surface);border:1px solid var(--border);
+    border-radius:6px;padding:3px 6px;cursor:pointer;
+  }
   .print-fallback-hint{font-size:11px;color:var(--ink-faint);}
   .save-flash{font-size:12px;color:var(--success);font-weight:600;opacity:0;transition:opacity .2s;}
   .save-flash.show{opacity:1;}
@@ -677,6 +681,10 @@
         <label class="print-both-label">
           <input type="checkbox" id="chkPrintBoth"> 両方まとめて印刷
         </label>
+        <select class="print-mode-select" id="printBothMode" title="「両方まとめて印刷」の動作方式">
+          <option value="combined">まとめて1回で印刷</option>
+          <option value="sequential">分けて2回印刷</option>
+        </select>
         <span class="print-fallback-hint">開かない場合は Ctrl+P（Macは ⌘+P）</span>
         <span class="spacer"></span>
         <span class="save-flash" id="saveFlash">保存しました</span>
@@ -1827,14 +1835,77 @@
     void document.body.offsetHeight;
   }
 
-  byId('btnPrintCurrent').addEventListener('click', function(){
-    applyPrintBothState();
+  /* "両方まとめて印刷" used to ask Safari to lay out and paginate both documents in a
+     single combined print job (both .doc elements force-shown together, separated by a
+     forced CSS page-break). That one-shot approach kept producing incomplete PDFs on at
+     least one Mac even with forcePrintReflow() above, so "両方" now runs two separate,
+     simpler print jobs back-to-back instead — invoice alone, then (once that dialog is
+     closed) packing list alone — chained via the native 'afterprint' event. Asking
+     Safari to paginate one document at a time removes the combined-layout calculation
+     that was the suspected point of failure. */
+  function printSingleDocument(which, onDone){
+    byId('docInvoice').classList.toggle('force-show', which === 'invoice');
+    byId('docPacking').classList.toggle('force-show', which === 'packing');
     forcePrintReflow();
-    // In some hosting environments a script-triggered print is silently blocked (no
-    // dialog, no error), so always surface the reliable fallback rather than assuming
-    // window.print() worked.
-    showToast('開かない場合は Ctrl+P（Mac: ⌘+P）をお試しください');
-    try{ window.print(); }catch(e){}
+    function onAfterPrint(){
+      window.removeEventListener('afterprint', onAfterPrint);
+      onDone();
+    }
+    window.addEventListener('afterprint', onAfterPrint);
+    try{
+      window.print();
+    }catch(e){
+      onAfterPrint();
+    }
+  }
+
+  /* "分けて2回印刷" vs "まとめて1回で印刷" — both are kept side by side (rather than
+     replacing one with the other) because the single-combined-print bug this was built
+     to work around is Safari-specific and hasn't reproduced the same way on every
+     record/machine, so there's no one setting that's provably correct for every case.
+     The choice is remembered per browser so it only needs to be set once. */
+  var LS_PRINT_MODE = 'kntk.printBothMode.v1';
+  var printModeSelect = byId('printBothMode');
+  printModeSelect.value = loadLS(LS_PRINT_MODE, 'combined');
+  printModeSelect.addEventListener('change', function(){
+    saveLS(LS_PRINT_MODE, printModeSelect.value);
+  });
+
+  byId('btnPrintCurrent').addEventListener('click', function(){
+    var printBoth = byId('chkPrintBoth').checked;
+
+    if (!printBoth){
+      applyPrintBothState();
+      forcePrintReflow();
+      // In some hosting environments a script-triggered print is silently blocked (no
+      // dialog, no error), so always surface the reliable fallback rather than assuming
+      // window.print() worked.
+      showToast('開かない場合は Ctrl+P（Mac: ⌘+P）をお試しください');
+      try{ window.print(); }catch(e){}
+      return;
+    }
+
+    if (printModeSelect.value === 'combined'){
+      applyPrintBothState();
+      forcePrintReflow();
+      showToast('開かない場合は Ctrl+P（Mac: ⌘+P）をお試しください');
+      try{ window.print(); }catch(e){}
+      return;
+    }
+
+    var activeTab = document.querySelector('.ptab.active');
+    var originalWhich = (activeTab && activeTab.dataset.doc) || 'invoice';
+    document.body.classList.remove('print-both-mode');
+    showToast('インボイス→パッキングリストの順に、印刷ダイアログが2回続けて開きます');
+
+    printSingleDocument('invoice', function(){
+      printSingleDocument('packing', function(){
+        byId('docInvoice').classList.remove('force-show');
+        byId('docPacking').classList.remove('force-show');
+        byId('docInvoice').classList.toggle('tab-active', originalWhich === 'invoice');
+        byId('docPacking').classList.toggle('tab-active', originalWhich === 'packing');
+      });
+    });
   });
 
   /* ---------------- save history / new ---------------- */

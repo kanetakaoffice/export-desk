@@ -1,4 +1,18 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>KANETAKA Export Desk</title>
+<!-- This page previously had no manifest.json or app icons of its own. On a Mac that
+     already has a different KANETAKA web app pinned to the Dock from the same
+     kanetakaoffice.github.io origin, Safari's "Add to Dock" / web-app detection falls
+     back to that other app's identity (same icon, same name) instead of treating this
+     page as its own distinct app — which is also where its caching is tied to, which may
+     explain this page seeming stuck on old content even after a refresh on that Mac. A
+     manifest scoped to this page's own folder (scope: "./") gives it a separate identity,
+     the same way Export Pricer already has its own manifest.json. -->
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Export Desk">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
